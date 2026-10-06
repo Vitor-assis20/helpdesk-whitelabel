@@ -3,6 +3,7 @@
 namespace App\Helpdesk;
 
 use App\Enums\TicketStatus;
+use App\Events\TicketChanged;
 use App\Models\Ticket;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -39,6 +40,8 @@ class AssignTicket
             if ($assignee && $ticket->status === TicketStatus::New) {
                 $this->lifecycle->moveTo($ticket, TicketStatus::Open, $actor, 'assigned');
             }
+
+            TicketChanged::dispatch($ticket->tenant_id, $ticket->id, $ticket->number, TicketChanged::ASSIGNMENT);
         });
 
         return $ticket;

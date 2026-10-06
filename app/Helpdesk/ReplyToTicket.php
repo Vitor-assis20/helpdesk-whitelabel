@@ -4,6 +4,7 @@ namespace App\Helpdesk;
 
 use App\Enums\MessageKind;
 use App\Enums\TicketStatus;
+use App\Events\TicketChanged;
 use App\Models\Customer;
 use App\Models\Ticket;
 use App\Models\TicketMessage;
@@ -94,5 +95,7 @@ class ReplyToTicket
     {
         $ticket->last_activity_at = now();
         $ticket->save();
+
+        TicketChanged::dispatch($ticket->tenant_id, $ticket->id, $ticket->number, TicketChanged::MESSAGE);
     }
 }

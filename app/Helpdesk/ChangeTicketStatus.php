@@ -3,6 +3,7 @@
 namespace App\Helpdesk;
 
 use App\Enums\TicketStatus;
+use App\Events\TicketChanged;
 use App\Models\Ticket;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -26,7 +27,10 @@ class ChangeTicketStatus
             throw TicketActionFailed::invalidTransition($ticket->status, $status);
         }
 
-        DB::transaction(fn () => $this->lifecycle->moveTo($ticket, $status, $actor, 'manual'));
+        DB::transaction(function () use ($ticket, $status, $actor) {
+            $this->lifecycle->moveTo($ticket, $status, $actor, 'manual');
+            TicketChanged::dispatch($ticket->tenant_id, $ticket->id, $ticket->number, TicketChanged::STATUS);
+        });
 
         return $ticket;
     }

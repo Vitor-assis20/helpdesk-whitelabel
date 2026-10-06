@@ -1,4 +1,5 @@
 import { LucideIcon } from 'lucide-react';
+import type { Panel } from './panel';
 
 export interface Auth {
     user: User;
@@ -25,6 +26,8 @@ export interface SharedData {
     name: string;
     quote: { message: string; author: string };
     auth: Auth;
+    /** Presente só nas páginas do painel. */
+    panel?: Panel;
     [key: string]: unknown;
 }
 

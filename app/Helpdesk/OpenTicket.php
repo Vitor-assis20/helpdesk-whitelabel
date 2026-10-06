@@ -6,6 +6,7 @@ use App\Enums\MessageKind;
 use App\Enums\TicketChannel;
 use App\Enums\TicketPriority;
 use App\Enums\TicketStatus;
+use App\Events\TicketChanged;
 use App\Models\Customer;
 use App\Models\Ticket;
 use App\Models\TicketMessage;
@@ -51,6 +52,7 @@ class OpenTicket
             $message->save();
 
             $this->lifecycle->record($ticket, 'created', null, ['channel' => $channel->value]);
+            TicketChanged::dispatch($ticket->tenant_id, $ticket->id, $ticket->number, TicketChanged::CREATED);
 
             return $ticket;
         });
