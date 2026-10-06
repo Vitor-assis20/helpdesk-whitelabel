@@ -39,6 +39,7 @@ class Ticket extends Model
      */
     protected $hidden = [
         'access_token',
+        'search_vector',
     ];
 
     protected static function booted(): void

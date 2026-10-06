@@ -41,6 +41,8 @@ export interface TicketListItem {
     assignee: string | null;
     last_activity_at: string;
     sla: CurrentDeadline | null;
+    /** Trecho da mensagem que casou com a busca, em segmentos (destacados sem HTML). */
+    snippet: { note: boolean; segments: { text: string; match: boolean }[] } | null;
 }
 
 export interface Paginated<T> {

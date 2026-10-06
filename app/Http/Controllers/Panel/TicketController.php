@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Panel;
 use App\Enums\TicketPriority;
 use App\Enums\TicketStatus;
 use App\Helpdesk\TicketEventDescriber;
+use App\Helpdesk\TicketSearch;
 use App\Http\Controllers\Controller;
 use App\Models\Ticket;
 use App\Models\TicketEvent;
@@ -25,26 +26,35 @@ class TicketController extends Controller
 
     public function __construct(private readonly CurrentTenant $current) {}
 
-    public function index(Request $request): Response
+    public function index(Request $request, TicketSearch $search): Response
     {
         $view = in_array($request->query('view'), self::VIEWS, true) ? $request->query('view') : 'open';
         $sort = $request->query('sort') === 'due' ? 'due' : 'activity';
+        $query = trim((string) $request->query('q', ''));
         $userId = $request->user()->id;
 
-        $tickets = $this->inView(Ticket::query(), $view, $userId)
+        $tickets = Ticket::query()
             ->with('customer:id,name', 'assignee:id,name')
+            // Com busca, procura em todos os status, por relevância; sem busca, a aba e a ordenação escolhidas.
             ->when(
-                $sort === 'due',
-                // Prazo em vigor: primeira resposta enquanto não houve resposta; depois, resolução.
-                fn (Builder $query) => $query->orderByRaw('CASE WHEN first_response_at IS NULL THEN first_response_due_at ELSE resolution_due_at END ASC NULLS LAST'),
-                fn (Builder $query) => $query->orderByDesc('last_activity_at'),
+                $query !== '',
+                fn (Builder $builder) => $search->apply($builder, $query),
+                fn (Builder $builder) => $this->inView($builder, $view, $userId)->when(
+                    $sort === 'due',
+                    // Prazo em vigor: primeira resposta enquanto não houve resposta; depois, resolução.
+                    fn (Builder $ordered) => $ordered->orderByRaw('CASE WHEN first_response_at IS NULL THEN first_response_due_at ELSE resolution_due_at END ASC NULLS LAST'),
+                    fn (Builder $ordered) => $ordered->orderByDesc('last_activity_at'),
+                ),
             )
             ->paginate(25)
             ->withQueryString();
 
+        $snippets = $query !== '' ? $search->snippets($tickets->pluck('id')->all(), $query) : [];
+
         return Inertia::render('panel/tickets/index', [
             'view' => $view,
             'sort' => $sort,
+            'q' => $query,
             'counts' => collect(self::VIEWS)->mapWithKeys(fn (string $name) => [$name => $this->inView(Ticket::query(), $name, $userId)->count()]),
             'tickets' => $tickets->through(fn (Ticket $ticket) => [
                 'id' => $ticket->id,
@@ -58,6 +68,7 @@ class TicketController extends Controller
                 'assignee' => $ticket->assignee?->name,
                 'last_activity_at' => $ticket->last_activity_at->toIso8601String(),
                 'sla' => $this->currentDeadline($ticket),
+                'snippet' => $snippets[$ticket->id] ?? null,
             ]),
         ]);
     }

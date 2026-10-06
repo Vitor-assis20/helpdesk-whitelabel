@@ -29,6 +29,15 @@ class TicketMessage extends Model
     ];
 
     /**
+     * Vetor de busca gerado pelo banco: detalhe de implementação.
+     *
+     * @var list<string>
+     */
+    protected $hidden = [
+        'search_vector',
+    ];
+
+    /**
      * Get the attributes that should be cast.
      *
      * @return array<string, string>
