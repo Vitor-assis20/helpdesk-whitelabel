@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Panel\SettingsController;
 use App\Http\Controllers\Panel\SwitchTenantController;
 use App\Http\Controllers\Panel\TicketActionController;
 use App\Http\Controllers\Panel\TicketController;
@@ -20,4 +21,11 @@ Route::middleware(['auth', 'verified', 'panel'])
         Route::patch('chamados/{ticket:number}/prioridade', [TicketActionController::class, 'priority'])->name('tickets.priority');
 
         Route::post('empresa', SwitchTenantController::class)->name('switch-tenant');
+
+        Route::middleware('can:manage-tenant')->prefix('configuracoes')->name('settings.')->group(function () {
+            Route::get('/', [SettingsController::class, 'edit'])->name('edit');
+            Route::put('marca', [SettingsController::class, 'branding'])->name('branding');
+            Route::put('expediente', [SettingsController::class, 'hours'])->name('hours');
+            Route::put('sla', [SettingsController::class, 'sla'])->name('sla');
+        });
     });
