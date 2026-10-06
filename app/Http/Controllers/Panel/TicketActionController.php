@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers\Panel;
 
+use App\Enums\TicketPriority;
 use App\Enums\TicketStatus;
 use App\Helpdesk\AssignTicket;
+use App\Helpdesk\ChangeTicketPriority;
 use App\Helpdesk\ChangeTicketStatus;
 use App\Helpdesk\CustomerNotifier;
 use App\Helpdesk\ReplyToTicket;
@@ -46,6 +48,15 @@ class TicketActionController extends Controller
         if ($status === TicketStatus::Resolved) {
             $notifier->resolved($ticket);
         }
+
+        return back();
+    }
+
+    public function priority(Request $request, Ticket $ticket, ChangeTicketPriority $change): RedirectResponse
+    {
+        $validated = $request->validate(['priority' => ['required', Rule::enum(TicketPriority::class)]]);
+
+        $this->attempt('priority', fn () => $change->handle($ticket, TicketPriority::from($validated['priority']), $request->user()));
 
         return back();
     }

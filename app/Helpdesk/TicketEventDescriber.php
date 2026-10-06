@@ -3,6 +3,7 @@
 namespace App\Helpdesk;
 
 use App\Enums\TicketChannel;
+use App\Enums\TicketPriority;
 use App\Enums\TicketStatus;
 use App\Models\TicketEvent;
 use Illuminate\Support\Collection;
@@ -40,6 +41,10 @@ class TicketEventDescriber
                 },
                 TicketStatus::from($event->data['to'])->label(),
             ),
+            'priority_changed' => "{$actor} mudou a prioridade para ".TicketPriority::from($event->data['to'])->label(),
+            'sla_breached' => ($event->data['target'] ?? null) === 'first_response'
+                ? 'Prazo de primeira resposta estourado'
+                : 'Prazo de resolução estourado',
             default => $event->type,
         };
     }

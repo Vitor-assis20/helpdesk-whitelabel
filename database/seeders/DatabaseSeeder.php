@@ -62,6 +62,9 @@ class DatabaseSeeder extends Seeder
 
         $this->seedTickets($store, self::STORE_TICKETS, agents: [$ana, $carlos], manager: $owner);
         $this->seedTickets($clinic, self::CLINIC_TICKETS, agents: [$owner], manager: $owner);
+
+        // Marca os prazos que já estouraram nos dias simulados, como o agendador faria.
+        $this->command->call('tickets:check-sla');
     }
 
     /**

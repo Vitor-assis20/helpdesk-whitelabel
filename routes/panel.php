@@ -17,6 +17,7 @@ Route::middleware(['auth', 'verified', 'panel'])
         Route::post('chamados/{ticket:number}/mensagens', [TicketActionController::class, 'reply'])->name('tickets.reply');
         Route::patch('chamados/{ticket:number}/status', [TicketActionController::class, 'status'])->name('tickets.status');
         Route::patch('chamados/{ticket:number}/responsavel', [TicketActionController::class, 'assign'])->name('tickets.assign');
+        Route::patch('chamados/{ticket:number}/prioridade', [TicketActionController::class, 'priority'])->name('tickets.priority');
 
         Route::post('empresa', SwitchTenantController::class)->name('switch-tenant');
     });

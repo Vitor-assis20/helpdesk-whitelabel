@@ -114,6 +114,22 @@ class Tenant extends Model
     // TenantScope e funcionam fora de um contexto de tenant.
 
     /**
+     * @return HasMany<BusinessHour, $this>
+     */
+    public function businessHours(): HasMany
+    {
+        return $this->hasMany(BusinessHour::class)->withoutGlobalScope(TenantScope::class);
+    }
+
+    /**
+     * @return HasMany<SlaPolicy, $this>
+     */
+    public function slaPolicies(): HasMany
+    {
+        return $this->hasMany(SlaPolicy::class)->withoutGlobalScope(TenantScope::class);
+    }
+
+    /**
      * @return HasMany<Customer, $this>
      */
     public function customers(): HasMany

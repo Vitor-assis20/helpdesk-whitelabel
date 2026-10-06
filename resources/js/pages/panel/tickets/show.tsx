@@ -4,14 +4,14 @@ import { Eye, LoaderCircle, Lock } from 'lucide-react';
 import { type FormEventHandler, useEffect, useRef, useState } from 'react';
 
 import InputError from '@/components/input-error';
-import { PriorityLabel, StatusBadge } from '@/components/ticket-badges';
+import { StatusBadge } from '@/components/ticket-badges';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import AppLayout from '@/layouts/app-layout';
 import { formatDateTime, timeAgo } from '@/lib/time';
 import { cn } from '@/lib/utils';
 import { type SharedData } from '@/types';
-import { type TicketDetail, type TicketHistoryEntry, type TicketMessage } from '@/types/panel';
+import { type Deadline, type TicketDetail, type TicketHistoryEntry, type TicketMessage } from '@/types/panel';
 
 interface TicketPageProps {
     ticket: TicketDetail;
@@ -61,6 +61,25 @@ function useTicketPresence(ticketId: number, me: Viewer) {
     };
 
     return { others: viewers.filter((viewer) => viewer.id !== me.id), typing, notifyTyping };
+}
+
+/** Um prazo do chamado: cumprido (no prazo ou não) ou ainda correndo. */
+function DeadlineRow({ label, deadline }: { label: string; deadline: Deadline }) {
+    if (!deadline.due_at) return null;
+
+    const state = deadline.done_at
+        ? deadline.breached
+            ? { text: `cumprido com atraso em ${formatDateTime(deadline.done_at)}`, className: 'text-red-600 dark:text-red-400' }
+            : { text: `cumprido em ${formatDateTime(deadline.done_at)}`, className: 'text-emerald-700 dark:text-emerald-400' }
+        : deadline.breached
+          ? { text: `estourado (prazo ${formatDateTime(deadline.due_at)})`, className: 'text-red-600 dark:text-red-400 font-medium' }
+          : { text: `até ${formatDateTime(deadline.due_at)}`, className: 'text-muted-foreground' };
+
+    return (
+        <p>
+            {label}: <span className={state.className}>{state.text}</span>
+        </p>
+    );
 }
 
 function Message({ message }: { message: TicketMessage }) {
@@ -118,6 +137,9 @@ export default function TicketPage({ ticket, messages, events, team }: TicketPag
 
     const changeStatus = (status: string) =>
         router.patch(route('panel.tickets.status', { ticket: ticket.number }), { status }, { preserveScroll: true });
+
+    const changePriority = (priority: string) =>
+        router.patch(route('panel.tickets.priority', { ticket: ticket.number }), { priority }, { preserveScroll: true });
 
     const assign = (assigneeId: number | null) =>
         router.patch(route('panel.tickets.assign', { ticket: ticket.number }), { assignee_id: assigneeId }, { preserveScroll: true });
@@ -236,16 +258,33 @@ export default function TicketPage({ ticket, messages, events, team }: TicketPag
                         <InputError message={errors.assignee_id} />
                     </div>
 
+                    <div className="space-y-2">
+                        <h2 className="text-sm font-semibold">Prioridade</h2>
+                        <Select value={ticket.priority} onValueChange={changePriority}>
+                            <SelectTrigger aria-label="Prioridade">
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {ticket.priorities.map((priority) => (
+                                    <SelectItem key={priority.value} value={priority.value}>
+                                        {priority.label}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        <InputError message={errors.priority} />
+                    </div>
+
+                    <div className="space-y-2 text-sm">
+                        <h2 className="font-semibold">Prazos (SLA)</h2>
+                        <DeadlineRow label="Primeira resposta" deadline={ticket.sla.first_response} />
+                        <DeadlineRow label="Resolução" deadline={ticket.sla.resolution} />
+                    </div>
+
                     <div className="space-y-1 text-sm">
                         <h2 className="font-semibold">Cliente</h2>
                         <p>{ticket.customer.name}</p>
                         <p className="text-muted-foreground">{ticket.customer.email}</p>
-                        <p className="pt-2">
-                            Prioridade: <PriorityLabel priority={ticket.priority} label={ticket.priority_label} />
-                        </p>
-                        <p className="text-muted-foreground">
-                            Primeira resposta: {ticket.first_response_at ? formatDateTime(ticket.first_response_at) : 'ainda não'}
-                        </p>
                     </div>
 
                     <div className="space-y-2">

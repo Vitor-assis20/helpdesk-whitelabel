@@ -22,3 +22,18 @@ export function timeAgo(iso: string, now: Date = new Date()): string {
 export function formatDateTime(iso: string): string {
     return dateTime.format(new Date(iso));
 }
+
+/** Duração legível: "25 min", "3 h 10 min", "2 dias". */
+export function formatSpan(milliseconds: number): string {
+    const minutes = Math.max(1, Math.round(Math.abs(milliseconds) / 60_000));
+
+    if (minutes < 60) return `${minutes} min`;
+    if (minutes < 24 * 60) {
+        const hours = Math.floor(minutes / 60);
+        const rest = minutes % 60;
+        return rest ? `${hours} h ${rest} min` : `${hours} h`;
+    }
+
+    const days = Math.round(minutes / (24 * 60));
+    return days === 1 ? '1 dia' : `${days} dias`;
+}

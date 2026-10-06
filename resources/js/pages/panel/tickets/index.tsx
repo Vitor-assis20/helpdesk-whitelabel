@@ -2,7 +2,7 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
 import { useEcho } from '@laravel/echo-react';
 import { useEffect, useRef, useState } from 'react';
 
-import { PriorityLabel, StatusBadge } from '@/components/ticket-badges';
+import { PriorityLabel, SlaBadge, StatusBadge } from '@/components/ticket-badges';
 import { Button } from '@/components/ui/button';
 import AppLayout from '@/layouts/app-layout';
 import { timeAgo } from '@/lib/time';
@@ -12,8 +12,11 @@ import { type Paginated, type TicketChangedPayload, type TicketListItem } from '
 
 type View = 'open' | 'mine' | 'unassigned' | 'done';
 
+type Sort = 'activity' | 'due';
+
 interface InboxProps {
     view: View;
+    sort: Sort;
     counts: Record<View, number>;
     tickets: Paginated<TicketListItem>;
 }
@@ -52,7 +55,7 @@ function useRecentlyChanged(durationMs = 4000) {
     return { ids, mark };
 }
 
-export default function Inbox({ view, counts, tickets }: InboxProps) {
+export default function Inbox({ view, sort, counts, tickets }: InboxProps) {
     const { panel } = usePage<SharedData>().props;
     const recentlyChanged = useRecentlyChanged();
     // Re-renderiza a cada minuto para manter os "há X minutos" corretos.
@@ -73,15 +76,27 @@ export default function Inbox({ view, counts, tickets }: InboxProps) {
             <Head title="Chamados" />
 
             <div className="flex flex-1 flex-col gap-4 p-4">
-                <div className="flex flex-wrap gap-2">
-                    {VIEWS.map((item) => (
-                        <Button key={item.value} variant={view === item.value ? 'default' : 'outline'} size="sm" asChild>
-                            <Link href={route('panel.tickets.index', item.value === 'open' ? {} : { view: item.value })} preserveScroll>
-                                {item.label}
-                                <span className="ml-1 opacity-70">{counts[item.value]}</span>
-                            </Link>
-                        </Button>
-                    ))}
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex flex-wrap gap-2">
+                        {VIEWS.map((item) => (
+                            <Button key={item.value} variant={view === item.value ? 'default' : 'outline'} size="sm" asChild>
+                                <Link href={route('panel.tickets.index', { view: item.value, sort })} preserveScroll>
+                                    {item.label}
+                                    <span className="ml-1 opacity-70">{counts[item.value]}</span>
+                                </Link>
+                            </Button>
+                        ))}
+                    </div>
+                    <div className="text-muted-foreground flex items-center gap-1 text-sm">
+                        Ordenar:
+                        {(['activity', 'due'] as Sort[]).map((option) => (
+                            <Button key={option} variant={sort === option ? 'secondary' : 'ghost'} size="sm" asChild>
+                                <Link href={route('panel.tickets.index', { view, sort: option })} preserveScroll>
+                                    {option === 'due' ? 'Prazo' : 'Atividade'}
+                                </Link>
+                            </Button>
+                        ))}
+                    </div>
                 </div>
 
                 {tickets.data.length === 0 ? (
@@ -108,7 +123,8 @@ export default function Inbox({ view, counts, tickets }: InboxProps) {
                                             <span>{ticket.assignee ?? 'Sem responsável'}</span>
                                         </div>
                                     </div>
-                                    <div className="flex items-center gap-3 sm:justify-end">
+                                    <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+                                        <SlaBadge sla={ticket.sla} />
                                         <StatusBadge status={ticket.status} label={ticket.status_label} />
                                         <span className="text-muted-foreground w-24 text-right text-xs">{timeAgo(ticket.last_activity_at)}</span>
                                     </div>

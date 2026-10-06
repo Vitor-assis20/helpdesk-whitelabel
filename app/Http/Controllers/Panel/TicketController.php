@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Panel;
 
+use App\Enums\TicketPriority;
 use App\Enums\TicketStatus;
 use App\Helpdesk\TicketEventDescriber;
 use App\Http\Controllers\Controller;
@@ -9,6 +10,7 @@ use App\Models\Ticket;
 use App\Models\TicketEvent;
 use App\Models\TicketMessage;
 use App\Support\Tenancy\CurrentTenant;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -26,16 +28,23 @@ class TicketController extends Controller
     public function index(Request $request): Response
     {
         $view = in_array($request->query('view'), self::VIEWS, true) ? $request->query('view') : 'open';
+        $sort = $request->query('sort') === 'due' ? 'due' : 'activity';
         $userId = $request->user()->id;
 
         $tickets = $this->inView(Ticket::query(), $view, $userId)
             ->with('customer:id,name', 'assignee:id,name')
-            ->orderByDesc('last_activity_at')
+            ->when(
+                $sort === 'due',
+                // Prazo em vigor: primeira resposta enquanto não houve resposta; depois, resolução.
+                fn (Builder $query) => $query->orderByRaw('CASE WHEN first_response_at IS NULL THEN first_response_due_at ELSE resolution_due_at END ASC NULLS LAST'),
+                fn (Builder $query) => $query->orderByDesc('last_activity_at'),
+            )
             ->paginate(25)
             ->withQueryString();
 
         return Inertia::render('panel/tickets/index', [
             'view' => $view,
+            'sort' => $sort,
             'counts' => collect(self::VIEWS)->mapWithKeys(fn (string $name) => [$name => $this->inView(Ticket::query(), $name, $userId)->count()]),
             'tickets' => $tickets->through(fn (Ticket $ticket) => [
                 'id' => $ticket->id,
@@ -48,6 +57,7 @@ class TicketController extends Controller
                 'priority_label' => $ticket->priority->label(),
                 'assignee' => $ticket->assignee?->name,
                 'last_activity_at' => $ticket->last_activity_at->toIso8601String(),
+                'sla' => $this->currentDeadline($ticket),
             ]),
         ]);
     }
@@ -76,6 +86,14 @@ class TicketController extends Controller
                     $ticket->status->transitions(),
                 ),
                 'accepts_messages' => $ticket->status !== TicketStatus::Closed,
+                'priorities' => array_map(
+                    fn (TicketPriority $priority) => ['value' => $priority->value, 'label' => $priority->label()],
+                    TicketPriority::cases(),
+                ),
+                'sla' => [
+                    'first_response' => $this->deadline($ticket->first_response_due_at, $ticket->first_response_at, $ticket->first_response_breached_at),
+                    'resolution' => $this->deadline($ticket->resolution_due_at, $ticket->resolved_at, $ticket->resolution_breached_at),
+                ],
             ],
             'messages' => $ticket->messages->map(fn (TicketMessage $message) => [
                 'id' => $message->id,
@@ -96,6 +114,41 @@ class TicketController extends Controller
             ]),
             'team' => $team->map->only('id', 'name')->values(),
         ]);
+    }
+
+    /**
+     * O prazo que está correndo agora (null se o chamado não está ativo).
+     *
+     * @return array{target: string, due_at: string|null, breached: bool}|null
+     */
+    private function currentDeadline(Ticket $ticket): ?array
+    {
+        if (! $ticket->status->isActive()) {
+            return null;
+        }
+
+        [$target, $due, $breachedAt] = $ticket->first_response_at === null
+            ? ['first_response', $ticket->first_response_due_at, $ticket->first_response_breached_at]
+            : ['resolution', $ticket->resolution_due_at, $ticket->resolution_breached_at];
+
+        return [
+            'target' => $target,
+            'due_at' => $due?->toIso8601String(),
+            'breached' => $breachedAt !== null || ($due !== null && $due <= now()),
+        ];
+    }
+
+    /**
+     * @return array{due_at: string|null, done_at: string|null, breached: bool}
+     */
+    private function deadline(?CarbonImmutable $due, ?CarbonImmutable $doneAt, ?CarbonImmutable $breachedAt): array
+    {
+        return [
+            'due_at' => $due?->toIso8601String(),
+            'done_at' => $doneAt?->toIso8601String(),
+            // Cumprido depois do prazo também conta como estouro.
+            'breached' => $breachedAt !== null || ($due !== null && ($doneAt ?? now()) > $due),
+        ];
     }
 
     /**

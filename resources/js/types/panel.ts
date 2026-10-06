@@ -16,6 +16,19 @@ export interface TicketChangedPayload {
     change: 'created' | 'message' | 'status' | 'assignment';
 }
 
+/** Prazo que está correndo agora no chamado. */
+export interface CurrentDeadline {
+    target: 'first_response' | 'resolution';
+    due_at: string | null;
+    breached: boolean;
+}
+
+export interface Deadline {
+    due_at: string | null;
+    done_at: string | null;
+    breached: boolean;
+}
+
 export interface TicketListItem {
     id: number;
     number: number;
@@ -27,6 +40,7 @@ export interface TicketListItem {
     priority_label: string;
     assignee: string | null;
     last_activity_at: string;
+    sla: CurrentDeadline | null;
 }
 
 export interface Paginated<T> {
@@ -52,6 +66,8 @@ export interface TicketDetail {
     customer: { name: string; email: string };
     transitions: { value: TicketStatus; label: string }[];
     accepts_messages: boolean;
+    priorities: { value: TicketPriority; label: string }[];
+    sla: { first_response: Deadline; resolution: Deadline };
 }
 
 export interface TicketMessage {

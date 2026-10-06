@@ -7,6 +7,7 @@ use App\Enums\TicketChannel;
 use App\Enums\TicketPriority;
 use App\Enums\TicketStatus;
 use App\Events\TicketChanged;
+use App\Helpdesk\Sla\SlaClock;
 use App\Models\Customer;
 use App\Models\Ticket;
 use App\Models\TicketMessage;
@@ -14,7 +15,10 @@ use Illuminate\Support\Facades\DB;
 
 class OpenTicket
 {
-    public function __construct(private readonly TicketLifecycle $lifecycle) {}
+    public function __construct(
+        private readonly TicketLifecycle $lifecycle,
+        private readonly SlaClock $sla,
+    ) {}
 
     /**
      * Abre um chamado em nome do cliente, com a primeira mensagem dele.
@@ -41,6 +45,10 @@ class OpenTicket
                 'status' => TicketStatus::New,
                 'last_activity_at' => now(),
             ])->save();
+
+            // Prazos de primeira resposta e de resolução, em horário comercial.
+            $this->sla->applyTo($ticket);
+            $ticket->save();
 
             $message = new TicketMessage([
                 'ticket_id' => $ticket->id,
