@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
 class Ticket extends Model
 {
@@ -30,6 +31,22 @@ class Ticket extends Model
         'priority',
         'channel',
     ];
+
+    /**
+     * O token do link do cliente nunca vai para o painel nem para o JSON por acidente.
+     *
+     * @var list<string>
+     */
+    protected $hidden = [
+        'access_token',
+    ];
+
+    protected static function booted(): void
+    {
+        static::creating(function (self $ticket) {
+            $ticket->access_token ??= Str::random(40);
+        });
+    }
 
     /**
      * Get the attributes that should be cast.

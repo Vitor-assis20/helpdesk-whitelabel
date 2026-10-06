@@ -1,5 +1,6 @@
 import { LucideIcon } from 'lucide-react';
 import type { Panel } from './panel';
+import type { Tenant } from './portal';
 
 export interface Auth {
     user: User;
@@ -28,6 +29,8 @@ export interface SharedData {
     auth: Auth;
     /** Presente só nas páginas do painel. */
     panel?: Panel;
+    /** Presente só no portal de uma empresa. */
+    tenant?: Tenant;
     [key: string]: unknown;
 }
 

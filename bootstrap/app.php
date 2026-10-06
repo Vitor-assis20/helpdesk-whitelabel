@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\ResolvePanelTenant;
+use App\Http\Middleware\ResolvePortalTenant;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -21,9 +22,13 @@ return Application::configure(basePath: dirname(__DIR__))
             AddLinkHeadersForPreloadedAssets::class,
         ]);
 
-        $middleware->alias(['panel' => ResolvePanelTenant::class]);
+        $middleware->alias([
+            'panel' => ResolvePanelTenant::class,
+            'portal' => ResolvePortalTenant::class,
+        ]);
         // Antes do route model binding: /chamados/{numero} já busca dentro da empresa.
         $middleware->prependToPriorityList(SubstituteBindings::class, ResolvePanelTenant::class);
+        $middleware->prependToPriorityList(SubstituteBindings::class, ResolvePortalTenant::class);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //

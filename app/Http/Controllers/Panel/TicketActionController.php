@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Panel;
 use App\Enums\TicketStatus;
 use App\Helpdesk\AssignTicket;
 use App\Helpdesk\ChangeTicketStatus;
+use App\Helpdesk\CustomerNotifier;
 use App\Helpdesk\ReplyToTicket;
 use App\Helpdesk\TicketActionFailed;
 use App\Http\Controllers\Controller;
@@ -21,21 +22,32 @@ use Illuminate\Validation\ValidationException;
  */
 class TicketActionController extends Controller
 {
-    public function reply(Request $request, Ticket $ticket, ReplyToTicket $reply): RedirectResponse
+    public function reply(Request $request, Ticket $ticket, ReplyToTicket $reply, CustomerNotifier $notifier): RedirectResponse
     {
         $validated = $request->validate([
             'body' => ['required', 'string', 'max:10000'],
             'internal' => ['boolean'],
         ], ['body.required' => 'Escreva a mensagem.']);
 
-        return $this->attempt('body', fn () => $reply->asAgent($ticket, $request->user(), $validated['body'], $request->boolean('internal')));
+        $message = $this->attempt('body', fn () => $reply->asAgent($ticket, $request->user(), $validated['body'], $request->boolean('internal')));
+        // Depois do commit; nota interna não gera e-mail (o notifier ignora).
+        $notifier->agentReplied($ticket, $message);
+
+        return back();
     }
 
-    public function status(Request $request, Ticket $ticket, ChangeTicketStatus $change): RedirectResponse
+    public function status(Request $request, Ticket $ticket, ChangeTicketStatus $change, CustomerNotifier $notifier): RedirectResponse
     {
         $validated = $request->validate(['status' => ['required', Rule::enum(TicketStatus::class)]]);
+        $status = TicketStatus::from($validated['status']);
 
-        return $this->attempt('status', fn () => $change->handle($ticket, TicketStatus::from($validated['status']), $request->user()));
+        $this->attempt('status', fn () => $change->handle($ticket, $status, $request->user()));
+
+        if ($status === TicketStatus::Resolved) {
+            $notifier->resolved($ticket);
+        }
+
+        return back();
     }
 
     public function assign(Request $request, Ticket $ticket, AssignTicket $assign): RedirectResponse
@@ -47,17 +59,23 @@ class TicketActionController extends Controller
             throw ValidationException::withMessages(['assignee_id' => TicketActionFailed::notMember()->getMessage()]);
         }
 
-        return $this->attempt('assignee_id', fn () => $assign->handle($ticket, $assignee, $request->user()));
+        $this->attempt('assignee_id', fn () => $assign->handle($ticket, $assignee, $request->user()));
+
+        return back();
     }
 
-    private function attempt(string $field, callable $action): RedirectResponse
+    /**
+     * @template TResult
+     *
+     * @param  callable(): TResult  $action
+     * @return TResult
+     */
+    private function attempt(string $field, callable $action): mixed
     {
         try {
-            $action();
+            return $action();
         } catch (TicketActionFailed $e) {
             throw ValidationException::withMessages([$field => $e->getMessage()]);
         }
-
-        return back();
     }
 }

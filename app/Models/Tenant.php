@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\TenantRole;
+use App\Support\BrandColor;
 use App\Support\Tenancy\CurrentTenant;
 use App\Support\Tenancy\TenantScope;
 use Database\Factories\TenantFactory;
@@ -41,6 +42,21 @@ class Tenant extends Model
             'branding' => 'array',
             'is_active' => 'boolean',
             'ticket_sequence' => 'integer',
+        ];
+    }
+
+    /**
+     * Marca no formato consumido pelo front e pelos e-mails.
+     *
+     * @return array{primary_color: string|null, logo_url: string|null}
+     */
+    public function publicBranding(): array
+    {
+        $color = $this->branding['primary_color'] ?? null;
+
+        return [
+            'primary_color' => BrandColor::isValid($color) ? $color : null,
+            'logo_url' => null,
         ];
     }
 

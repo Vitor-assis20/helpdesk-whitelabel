@@ -9,8 +9,8 @@ use Illuminate\Contracts\Events\ShouldDispatchAfterCommit;
 use Illuminate\Foundation\Events\Dispatchable;
 
 /**
- * Algo mudou num chamado. Vai para a caixa de entrada da empresa e para quem
- * está com o chamado aberto.
+ * Algo mudou num chamado. Vai para a caixa de entrada da empresa, para quem
+ * está com o chamado aberto e, se for visível ao cliente, para o portal dele.
  *
  * O payload não leva conteúdo (mensagem, nota, dados do cliente): quem recebe
  * recarrega pelo servidor, que aplica permissões e filtros. Só escalares,
@@ -34,6 +34,8 @@ class TicketChanged implements ShouldBroadcast, ShouldDispatchAfterCommit
         public readonly int $ticketId,
         public readonly int $number,
         public readonly string $change,
+        // Nota interna e troca de responsável não interessam (nem devem chegar) ao cliente.
+        public readonly bool $visibleToCustomer = false,
     ) {}
 
     /**
@@ -44,6 +46,7 @@ class TicketChanged implements ShouldBroadcast, ShouldDispatchAfterCommit
         return [
             new PrivateChannel("tenants.{$this->tenantId}.tickets"),
             new PrivateChannel("tickets.{$this->ticketId}"),
+            ...($this->visibleToCustomer ? [new PrivateChannel("portal.tickets.{$this->ticketId}")] : []),
         ];
     }
 

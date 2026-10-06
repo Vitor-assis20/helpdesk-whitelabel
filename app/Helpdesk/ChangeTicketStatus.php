@@ -29,7 +29,7 @@ class ChangeTicketStatus
 
         DB::transaction(function () use ($ticket, $status, $actor) {
             $this->lifecycle->moveTo($ticket, $status, $actor, 'manual');
-            TicketChanged::dispatch($ticket->tenant_id, $ticket->id, $ticket->number, TicketChanged::STATUS);
+            TicketChanged::dispatch($ticket->tenant_id, $ticket->id, $ticket->number, TicketChanged::STATUS, visibleToCustomer: true);
         });
 
         return $ticket;

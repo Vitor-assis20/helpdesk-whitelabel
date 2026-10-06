@@ -37,7 +37,7 @@ class ReplyToTicket
                 $this->lifecycle->moveTo($ticket, TicketStatus::Pending, $agent, 'agent_reply');
             }
 
-            $this->touchActivity($ticket);
+            $this->touchActivity($ticket, visibleToCustomer: ! $internal);
 
             return $message;
         });
@@ -63,7 +63,7 @@ class ReplyToTicket
                 $this->lifecycle->moveTo($ticket, TicketStatus::Open, null, 'customer_reply');
             }
 
-            $this->touchActivity($ticket);
+            $this->touchActivity($ticket, visibleToCustomer: true);
 
             return $message;
         });
@@ -91,11 +91,11 @@ class ReplyToTicket
         return $message;
     }
 
-    private function touchActivity(Ticket $ticket): void
+    private function touchActivity(Ticket $ticket, bool $visibleToCustomer): void
     {
         $ticket->last_activity_at = now();
         $ticket->save();
 
-        TicketChanged::dispatch($ticket->tenant_id, $ticket->id, $ticket->number, TicketChanged::MESSAGE);
+        TicketChanged::dispatch($ticket->tenant_id, $ticket->id, $ticket->number, TicketChanged::MESSAGE, $visibleToCustomer);
     }
 }
