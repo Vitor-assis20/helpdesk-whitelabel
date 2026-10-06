@@ -12,12 +12,9 @@ type OpenTicketForm = { name: string; email: string; subject: string; body: stri
 
 export default function PortalHome() {
     const { data, setData, post, processing, errors } = useForm<OpenTicketForm>({ name: '', email: '', subject: '', body: '' });
-    // Dentro do widget (iframe), o chamado é registrado como vindo do widget.
-    const via = new URLSearchParams(window.location.search).get('via');
-
     const submit: FormEventHandler = (e) => {
         e.preventDefault();
-        post(route('portal.tickets.store', via === 'widget' ? { via } : {}));
+        post(route('portal.tickets.store'));
     };
 
     return (

@@ -35,4 +35,15 @@ return [
         ],
     ],
 
+    /*
+    | Endereço público do Reverb, como o navegador o alcança (o servidor usa
+    | REVERB_HOST, o nome do container). Entregue ao widget embutido.
+    */
+    'reverb_public' => [
+        'key' => env('REVERB_APP_KEY'),
+        'host' => env('VITE_REVERB_HOST', 'localhost'),
+        'port' => (int) env('VITE_REVERB_PORT', env('REVERB_PORT', 8080)),
+        'scheme' => env('VITE_REVERB_SCHEME', env('REVERB_SCHEME', 'https')),
+    ],
+
 ];

@@ -62,13 +62,6 @@ class PortalTest extends HelpdeskTestCase
             && ! str_contains(serialize($notification), 'App\\Models\\'));
     }
 
-    public function test_tickets_opened_from_the_widget_are_labelled_as_such()
-    {
-        $this->post($this->url('chamados?via=widget'), ['name' => 'Ana', 'email' => 'ana@example.com', 'subject' => 'Oi', 'body' => 'Olá']);
-
-        $this->assertSame(TicketChannel::Widget, Ticket::withoutGlobalScopes()->latest('id')->first()->channel);
-    }
-
     public function test_the_customer_never_sees_internal_notes()
     {
         $ticket = $this->openTicket();
