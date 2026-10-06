@@ -1,0 +1,47 @@
+name: linter
+
+on:
+  push:
+    branches:
+      - develop
+      - main
+  pull_request:
+    branches:
+      - develop
+      - main
+
+# Só verifica: falha se o código não estiver formatado ou tiver erros,
+# em vez de corrigir no runner e descartar o resultado.
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: |
+          composer install -q --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
+          npm ci
+
+      - name: PHP code style (Pint)
+        run: vendor/bin/pint --test
+
+      - name: Frontend formatting (Prettier)
+        run: npm run format:check
+
+      - name: Frontend lint (ESLint)
+        run: npx eslint .
+
+      - name: Type check (TypeScript)
+        run: npx tsc --noEmit
