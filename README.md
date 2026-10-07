@@ -22,6 +22,10 @@ SaaS multi-tenant de atendimento ao cliente. Cada empresa recebe chamados pelo *
 | --- | --- |
 | ![Busca](docs/screenshots/search.png) | ![Configurações](docs/screenshots/settings.png) |
 
+| Equipe e convites |
+| --- |
+| ![Equipe](docs/screenshots/team.png) |
+
 </details>
 
 ## Funcionalidades
@@ -32,7 +36,9 @@ SaaS multi-tenant de atendimento ao cliente. Cada empresa recebe chamados pelo *
 - **Tempo real:** novos chamados e mensagens aparecem sem recarregar; quem mais está vendo o chamado e quem está digitando
 - **SLA:** prazos de primeira resposta e resolução por prioridade, contados só em horário comercial, com alerta por e-mail quando estouram
 - **Busca full-text** em assunto, mensagens, cliente e número — sem acento e enquanto digita
-- Configuração da marca, do expediente e dos prazos; papéis de dono, administrador e atendente
+- Configuração da marca, do expediente e dos prazos
+- **Equipe:** convites por e-mail com link de uso único, papéis de dono, administrador e atendente, troca de papel e remoção
+- Cadastro de empresa pelo próprio usuário, que vira dono e escolhe o subdomínio do portal
 
 **Para o cliente** (sem criar conta)
 - **Widget** instalado com uma linha no site da empresa
@@ -70,21 +76,29 @@ Banco único com `tenant_id` em todas as tabelas, um *global scope* que **falha 
 - **responsável sempre da equipe**: FK composta para a tabela de membros, com `ON DELETE SET NULL (assignee_id)` (Postgres 15+) — se o atendente sai da equipe, só o responsável é removido;
 - **cliente nunca escreve nota interna**: `CHECK` no banco.
 
+### Convites sem atalhos
+O link do convite leva um token aleatório, e o banco guarda **só o hash SHA-256** dele: quem lê a tabela não consegue entrar na equipe. Reenviar gera outro token e invalida o anterior, e um índice único parcial garante **um convite pendente por e-mail** em cada empresa.
+
+Aceitar exige o token **e** estar logado com o e-mail convidado. O token sozinho valeria para qualquer pessoa a quem o link fosse repassado, e o e-mail sozinho não prova nada, porque o cadastro não confirma o endereço. O aceite trava a linha do convite (`SELECT ... FOR UPDATE`), então dois cliques simultâneos não usam o mesmo link duas vezes. Quem chega sem conta é levado ao cadastro e volta ao convite depois ([`AcceptInvitation`](app/Helpdesk/Team/AcceptInvitation.php)).
+
+Os papéis seguem uma hierarquia ([`TenantRole::canManage`](app/Enums/TenantRole.php)): o dono gerencia administradores e atendentes, o administrador só atendentes, ninguém mexe no próprio acesso nem no do dono. Remover alguém da equipe deixa os chamados dessa pessoa sem responsável sem precisar de código: a FK composta para `tenant_user` já faz isso no banco.
+
 ### Busca full-text no Postgres
 Configuração própria `pt_unaccent` (unaccent + radicais em português), vetores em **colunas geradas** com índices GIN e prefixo enquanto digita ("reemb" encontra "Reembolso"). Só letras e dígitos chegam ao `tsquery`, e o trecho destacado volta como segmentos de texto — nada de HTML vindo do cliente ([`TicketSearch`](app/Helpdesk/TicketSearch.php)).
 
 ## Qualidade
 
-- **113 testes** (unitários, feature e integração) rodando em **PostgreSQL real**, incluindo regras do banco, isolamento entre empresas, autorização de canais, serialização para a fila e entradas hostis na busca
+- **127 testes** (unitários, feature e integração) rodando em **PostgreSQL real**, incluindo regras do banco, isolamento entre empresas, autorização de canais, serialização para a fila e entradas hostis na busca
 - Fluxos validados ponta a ponta em navegador (Playwright): dois atendentes ao vivo, cliente no portal, widget em outra origem
 - CI no GitHub Actions: testes com Postgres, Pint, Prettier, ESLint e `tsc`
 
 ```
 app/
 ├── Helpdesk/            Ações de domínio (abrir, responder, status, responsável, prioridade),
-│   └── Sla/             busca, e-mails ao cliente; calendário e relógio de SLA
+│   ├── Sla/             busca, e-mails ao cliente; calendário e relógio de SLA
+│   └── Team/            convites, papéis e cadastro de empresa
 ├── Events/              TicketChanged (tempo real)
-├── Http/Controllers/    Panel/ (equipe), Portal/ (cliente), Widget/ (API do widget)
+├── Http/Controllers/    Panel/ (painel da equipe), Portal/ (cliente), Widget/ (API do widget)
 ├── Console/Commands/    tickets:check-sla
 └── Support/Tenancy/     Empresa atual e global scope
 resources/

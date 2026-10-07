@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\InvitationController;
 use App\Models\Tenant;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -21,6 +22,12 @@ Route::domain(config('app.domain'))->group(function () {
 
     // Destino padrão após o login.
     Route::middleware(['auth'])->get('dashboard', fn () => to_route('panel.tickets.index'))->name('dashboard');
+
+    // Convite para a equipe: abre sem login; aceitar exige a conta convidada.
+    Route::middleware('throttle:30,1')->group(function () {
+        Route::get('convites/{token}', [InvitationController::class, 'show'])->name('invitations.show');
+        Route::post('convites/{token}', [InvitationController::class, 'accept'])->middleware('auth')->name('invitations.accept');
+    });
 
     require __DIR__.'/panel.php';
     require __DIR__.'/settings.php';

@@ -19,9 +19,10 @@ class RegisteredUserController extends Controller
     /**
      * Show the registration page.
      */
-    public function create(): Response
+    public function create(Request $request): Response
     {
-        return Inertia::render('auth/register');
+        // Vindo de um convite, o e-mail já chega preenchido.
+        return Inertia::render('auth/register', ['email' => is_string($email = $request->query('email')) ? $email : null]);
     }
 
     /**
@@ -47,6 +48,7 @@ class RegisteredUserController extends Controller
 
         Auth::login($user);
 
-        return to_route('dashboard');
+        // Volta para o convite, se veio de um.
+        return redirect()->intended(route('dashboard', absolute: false));
     }
 }

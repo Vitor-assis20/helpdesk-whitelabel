@@ -16,10 +16,10 @@ type RegisterForm = {
     password_confirmation: string;
 };
 
-export default function Register() {
+export default function Register({ email }: { email?: string | null }) {
     const { data, setData, post, processing, errors, reset } = useForm<RegisterForm>({
         name: '',
-        email: '',
+        email: email ?? '',
         password: '',
         password_confirmation: '',
     });

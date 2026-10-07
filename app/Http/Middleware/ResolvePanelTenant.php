@@ -27,7 +27,7 @@ class ResolvePanelTenant
         $tenants = $request->user()->tenants()->where('is_active', true)->orderBy('name')->get();
 
         if ($tenants->isEmpty()) {
-            return Inertia::render('panel/no-business')->toResponse($request);
+            return Inertia::render('panel/no-business', ['domain' => config('app.domain')])->toResponse($request);
         }
 
         /** @var Tenant $tenant */

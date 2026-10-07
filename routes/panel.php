@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\Panel\SettingsController;
 use App\Http\Controllers\Panel\SwitchTenantController;
+use App\Http\Controllers\Panel\TeamController;
+use App\Http\Controllers\Panel\TenantController;
 use App\Http\Controllers\Panel\TicketActionController;
 use App\Http\Controllers\Panel\TicketController;
 use Illuminate\Support\Facades\Route;
@@ -28,4 +30,17 @@ Route::middleware(['auth', 'verified', 'panel'])
             Route::put('expediente', [SettingsController::class, 'hours'])->name('hours');
             Route::put('sla', [SettingsController::class, 'sla'])->name('sla');
         });
+
+        Route::middleware('can:manage-tenant')->prefix('equipe')->name('team.')->group(function () {
+            Route::get('/', [TeamController::class, 'index'])->name('index');
+            Route::post('convites', [TeamController::class, 'invite'])->middleware('throttle:20,1')->name('invite');
+            Route::delete('convites/{invitation}', [TeamController::class, 'revoke'])->name('revoke');
+            Route::patch('membros/{member}', [TeamController::class, 'updateRole'])->name('role');
+            Route::delete('membros/{member}', [TeamController::class, 'remove'])->name('remove');
+        });
     });
+
+// Cadastro de empresa: fora do grupo "panel", que exige já fazer parte de uma.
+Route::middleware(['auth', 'verified', 'throttle:5,1'])
+    ->post('painel/empresas', [TenantController::class, 'store'])
+    ->name('panel.tenants.store');
