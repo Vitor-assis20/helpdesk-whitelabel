@@ -1,3 +1,5 @@
+import { type Rating } from '@/lib/satisfaction';
+
 export type TenantRole = 'owner' | 'admin' | 'agent';
 
 export type TicketStatus = 'new' | 'open' | 'pending' | 'resolved' | 'closed';
@@ -13,7 +15,7 @@ export interface Panel {
 export interface TicketChangedPayload {
     ticket_id: number;
     number: number;
-    change: 'created' | 'message' | 'status' | 'assignment';
+    change: 'created' | 'message' | 'status' | 'assignment' | 'priority' | 'sla' | 'rating';
 }
 
 /** Prazo que está correndo agora no chamado. */
@@ -77,6 +79,7 @@ export interface TicketDetail {
     accepts_messages: boolean;
     priorities: { value: TicketPriority; label: string }[];
     sla: { first_response: Deadline; resolution: Deadline };
+    rating: (Rating & { rated_at: string }) | null;
 }
 
 export interface TicketMessage {

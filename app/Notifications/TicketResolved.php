@@ -2,6 +2,8 @@
 
 namespace App\Notifications;
 
+use App\Enums\SatisfactionScore;
+
 class TicketResolved extends TicketNotification
 {
     protected function subject(): string
@@ -22,5 +24,15 @@ class TicketResolved extends TicketNotification
     protected function outro(): ?string
     {
         return null;
+    }
+
+    /**
+     * Cada nota abre o chamado com ela pré-selecionada; o cliente confirma lá.
+     */
+    protected function ratingLinks(): ?array
+    {
+        return collect(SatisfactionScore::cases())
+            ->mapWithKeys(fn (SatisfactionScore $score) => ["{$score->value} · {$score->label()}" => $this->summary->ticketUrl.'?nota='.$score->value.'#avaliacao'])
+            ->all();
     }
 }

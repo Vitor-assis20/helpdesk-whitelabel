@@ -42,6 +42,16 @@ abstract class TicketNotification extends Notification implements ShouldQueue
     }
 
     /**
+     * Links de avaliação do atendimento (nota => URL), ou null para não pedir.
+     *
+     * @return array<string, string>|null
+     */
+    protected function ratingLinks(): ?array
+    {
+        return null;
+    }
+
+    /**
      * @return list<string>
      */
     public function via(object $notifiable): array
@@ -61,6 +71,7 @@ abstract class TicketNotification extends Notification implements ShouldQueue
                 'quote' => $this->quote() !== null ? Str::limit($this->quote(), 500) : null,
                 'actionText' => $this->actionText(),
                 'outro' => $this->outro(),
+                'ratingLinks' => $this->ratingLinks(),
             ]);
     }
 }

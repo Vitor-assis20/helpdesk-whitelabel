@@ -3,6 +3,7 @@ import { LoaderCircle } from 'lucide-react';
 import { type FormEventHandler, useEffect, useRef } from 'react';
 
 import InputError from '@/components/input-error';
+import { RatingForm } from '@/components/rating-form';
 import { Button } from '@/components/ui/button';
 import { usePortalUpdates } from '@/hooks/use-portal-updates';
 import TenantLayout from '@/layouts/tenant-layout';
@@ -10,7 +11,15 @@ import { formatDateTime, timeAgo } from '@/lib/time';
 import { cn } from '@/lib/utils';
 import { type PortalMessage, type PortalTicket } from '@/types/portal';
 
-export default function PortalTicketPage({ ticket, messages }: { ticket: PortalTicket; messages: PortalMessage[] }) {
+export default function PortalTicketPage({
+    ticket,
+    messages,
+    suggested_score,
+}: {
+    ticket: PortalTicket;
+    messages: PortalMessage[];
+    suggested_score: number | null;
+}) {
     const form = useForm({ body: '' });
     const end = useRef<HTMLDivElement>(null);
 
@@ -54,6 +63,8 @@ export default function PortalTicketPage({ ticket, messages }: { ticket: PortalT
                     ))}
                     <div ref={end} />
                 </div>
+
+                {ticket.can_rate && <RatingForm ticket={ticket} suggestedScore={suggested_score} />}
 
                 {ticket.accepts_messages ? (
                     <form onSubmit={submit} className="bg-background space-y-3 rounded-lg border p-3">

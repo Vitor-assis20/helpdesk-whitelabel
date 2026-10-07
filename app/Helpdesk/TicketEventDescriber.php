@@ -2,6 +2,7 @@
 
 namespace App\Helpdesk;
 
+use App\Enums\SatisfactionScore;
 use App\Enums\TicketChannel;
 use App\Enums\TicketPriority;
 use App\Enums\TicketStatus;
@@ -45,6 +46,11 @@ class TicketEventDescriber
             'sla_breached' => ($event->data['target'] ?? null) === 'first_response'
                 ? 'Prazo de primeira resposta estourado'
                 : 'Prazo de resolução estourado',
+            'rated' => sprintf(
+                ($event->data['from'] ?? null) ? 'O cliente mudou a avaliação para %s (%d/5)' : 'O cliente avaliou o atendimento: %s (%d/5)',
+                SatisfactionScore::from($event->data['score'])->label(),
+                $event->data['score'],
+            ),
             default => $event->type,
         };
     }

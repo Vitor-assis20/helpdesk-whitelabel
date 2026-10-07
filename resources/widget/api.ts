@@ -25,6 +25,10 @@ export class WidgetApi {
         return this.request('POST', `/tickets/${encodeURIComponent(token)}/messages`, { body });
     }
 
+    rate(token: string, score: number): Promise<CustomerTicket> {
+        return this.request('POST', `/tickets/${encodeURIComponent(token)}/rating`, { score });
+    }
+
     private async request(method: string, path: string, body?: unknown): Promise<CustomerTicket> {
         const response = await fetch(this.config.apiUrl + path, {
             method,

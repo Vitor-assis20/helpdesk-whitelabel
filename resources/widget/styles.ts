@@ -43,4 +43,10 @@ textarea { resize: vertical; min-height: 72px; }
 .reply { display: flex; gap: 8px; align-items: flex-end; }
 .reply textarea { min-height: 40px; }
 .reply .primary { width: auto; padding: 10px 14px; }
+.rating { margin-bottom: 8px; }
+.rating .status { margin: 0 0 6px; }
+.scores { display: flex; justify-content: center; gap: 6px; }
+.score { font-size: 22px; line-height: 1; padding: 6px 8px; border: 1px solid #e4e4e7; border-radius: 10px; background: #fff; cursor: pointer; transition: transform .1s ease; }
+.score:hover { transform: scale(1.12); border-color: var(--brand); }
+.score:disabled { opacity: .5; cursor: default; transform: none; }
 `;

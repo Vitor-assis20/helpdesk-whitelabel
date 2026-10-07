@@ -26,6 +26,10 @@ SaaS multi-tenant de atendimento ao cliente. Cada empresa recebe chamados pelo *
 | --- | --- |
 | ![Respostas prontas](docs/screenshots/macros.png) | ![Equipe](docs/screenshots/team.png) |
 
+| Avaliação do atendimento no portal |
+| --- |
+| ![Avaliação](docs/screenshots/csat.png) |
+
 </details>
 
 ## Funcionalidades
@@ -45,6 +49,7 @@ SaaS multi-tenant de atendimento ao cliente. Cada empresa recebe chamados pelo *
 - **Widget** instalado com uma linha no site da empresa
 - **Portal** no subdomínio da empresa (`loja-aurora.seudominio.com`)
 - Conversa em tempo real e e-mails com a marca da empresa (recebido, nova resposta, resolvido)
+- **Avaliação do atendimento** (nota de 1 a 5 e comentário) depois de resolvido, pelo portal, pelo widget ou direto do e-mail de "resolvido"; a equipe vê a nota no chamado e no histórico
 
 ## Decisões técnicas
 
@@ -87,19 +92,22 @@ Os papéis seguem uma hierarquia ([`TenantRole::canManage`](app/Enums/TenantRole
 ### Respostas prontas preenchidas no servidor
 As variáveis são preenchidas pelo servidor ([`MacroRenderer`](app/Helpdesk/MacroRenderer.php)) ao abrir o chamado, e o texto chega pronto ao campo, onde o atendente ainda pode editar antes de enviar. Variável desconhecida fica visível como está, em vez de sumir sem aviso, e o primeiro nome ignora tratamentos ("Dra. Marina" → "Marina"). O título é único por empresa sem diferenciar maiúsculas, garantido por um índice em `lower(title)`; a contagem de uso só vale para respostas da própria empresa.
 
+### Avaliação que não se grava sozinha
+O e-mail de "resolvido" traz uma nota em cada link, mas o link **não grava nada**: só abre o chamado com a nota marcada, e o cliente confirma com um clique. Leitores de e-mail e antivírus corporativos abrem os links das mensagens sozinhos, e um GET que gravasse a nota registraria avaliações que ninguém deu. Avaliar de novo substitui a nota (vale a opinião mais recente), e o histórico guarda cada avaliação. `CHECK`s no banco garantem a faixa de 1 a 5, nota e data sempre juntas e nenhum comentário sem nota ([`RateTicket`](app/Helpdesk/RateTicket.php)).
+
 ### Busca full-text no Postgres
 Configuração própria `pt_unaccent` (unaccent + radicais em português), vetores em **colunas geradas** com índices GIN e prefixo enquanto digita ("reemb" encontra "Reembolso"). Só letras e dígitos chegam ao `tsquery`, e o trecho destacado volta como segmentos de texto — nada de HTML vindo do cliente ([`TicketSearch`](app/Helpdesk/TicketSearch.php)).
 
 ## Qualidade
 
-- **136 testes** (unitários, feature e integração) rodando em **PostgreSQL real**, incluindo regras do banco, isolamento entre empresas, autorização de canais, serialização para a fila e entradas hostis na busca
+- **144 testes** (unitários, feature e integração) rodando em **PostgreSQL real**, incluindo regras do banco, isolamento entre empresas, autorização de canais, serialização para a fila e entradas hostis na busca
 - Fluxos validados ponta a ponta em navegador (Playwright): dois atendentes ao vivo, cliente no portal, widget em outra origem
 - CI no GitHub Actions: testes com Postgres, Pint, Prettier, ESLint e `tsc`
 
 ```
 app/
 ├── Helpdesk/            Ações de domínio (abrir, responder, status, responsável, prioridade),
-│   │                    busca, respostas prontas, e-mails ao cliente
+│   │                    avaliação, busca, respostas prontas, e-mails ao cliente
 │   ├── Sla/             calendário e relógio de SLA
 │   └── Team/            convites, papéis e cadastro de empresa
 ├── Events/              TicketChanged (tempo real)

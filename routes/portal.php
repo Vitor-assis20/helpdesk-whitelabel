@@ -24,6 +24,10 @@ Route::domain('{tenant}.'.config('app.domain'))
             ->middleware('throttle:10,1')
             ->name('tickets.reply');
 
+        Route::post('chamados/{ticket:access_token}/avaliacao', [PortalController::class, 'rate'])
+            ->middleware('throttle:10,1')
+            ->name('tickets.rate');
+
         Route::post('portal/broadcasting/auth', BroadcastAuthController::class)
             ->middleware('throttle:60,1')
             ->name('broadcasting.auth');

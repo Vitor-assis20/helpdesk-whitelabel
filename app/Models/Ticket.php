@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Casts\UtcDateTime;
+use App\Enums\SatisfactionScore;
 use App\Enums\TicketChannel;
 use App\Enums\TicketPriority;
 use App\Enums\TicketStatus;
@@ -69,6 +70,8 @@ class Ticket extends Model
             'resolution_due_at' => UtcDateTime::class,
             'first_response_breached_at' => UtcDateTime::class,
             'resolution_breached_at' => UtcDateTime::class,
+            'satisfaction_score' => SatisfactionScore::class,
+            'satisfaction_rated_at' => UtcDateTime::class,
         ];
     }
 

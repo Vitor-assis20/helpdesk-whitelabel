@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Enums\SatisfactionScore;
 use App\Enums\TenantRole;
 use App\Enums\TicketChannel;
 use App\Enums\TicketPriority;
@@ -9,6 +10,7 @@ use App\Enums\TicketStatus;
 use App\Helpdesk\AssignTicket;
 use App\Helpdesk\ChangeTicketStatus;
 use App\Helpdesk\OpenTicket;
+use App\Helpdesk\RateTicket;
 use App\Helpdesk\ReplyToTicket;
 use App\Models\Customer;
 use App\Models\Macro;
@@ -40,6 +42,14 @@ class DatabaseSeeder extends Seeder
         ['Remarcar consulta', 'Preciso remarcar minha consulta de quinta para a próxima semana.', TicketPriority::Normal, 'pending'],
         ['Resultado de exame', 'Meu exame de sangue já está disponível?', TicketPriority::Normal, 'new'],
         ['Reembolso do plano', 'Preciso da declaração para pedir reembolso ao plano.', TicketPriority::Low, 'open'],
+    ];
+
+    /**
+     * Avaliações dos clientes por assunto: [nota, comentário]. "Prazo de entrega" fica sem, para avaliar na demonstração.
+     */
+    private const RATINGS = [
+        'Troca de tamanho' => [SatisfactionScore::Great, 'Troca super rápida, obrigada!'],
+        'Nota fiscal' => [SatisfactionScore::Okay, null],
     ];
 
     /**
@@ -121,6 +131,10 @@ class DatabaseSeeder extends Seeder
             $this->at($clock->addHours(5), fn () => $reply->asCustomer($ticket, $customer, 'Claro, segue o número: 48213.'));
             $this->at($clock->addHours(6), fn () => $reply->asAgent($ticket, $agent, 'Tudo certo, resolvido! Qualquer coisa é só responder aqui.'));
             $this->at($clock->addHours(6), fn () => app(ChangeTicketStatus::class)->handle($ticket, TicketStatus::Resolved, $agent));
+
+            if ($rating = self::RATINGS[$subject] ?? null) {
+                $this->at($clock->addHours(8), fn () => app(RateTicket::class)->handle($ticket, ...$rating));
+            }
 
             if ($stage === 'closed') {
                 $this->at($clock->addHours(30), fn () => app(ChangeTicketStatus::class)->handle($ticket, TicketStatus::Closed, $agent));

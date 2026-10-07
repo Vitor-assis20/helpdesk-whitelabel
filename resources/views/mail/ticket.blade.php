@@ -22,6 +22,12 @@ Olá, {{ $summary->customerFirstName() }}! {{ $intro }}
 {{ $actionText }}
 </x-mail::button>
 
+@if ($ratingLinks)
+**Como foi o atendimento?** Escolha uma nota:
+
+{!! collect($ratingLinks)->map(fn ($url, $label) => '['.e($label).']('.e($url).')')->join(' &nbsp;·&nbsp; ') !!}
+
+@endif
 @if ($outro)
 {{ $outro }}
 @endif

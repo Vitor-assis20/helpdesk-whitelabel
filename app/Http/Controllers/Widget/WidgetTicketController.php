@@ -6,10 +6,12 @@ use App\Enums\TicketChannel;
 use App\Helpdesk\CustomerNotifier;
 use App\Helpdesk\CustomerTicketView;
 use App\Helpdesk\OpenCustomerTicket;
+use App\Helpdesk\RateTicket;
 use App\Helpdesk\ReplyToTicket;
 use App\Helpdesk\TicketActionFailed;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Portal\OpenTicketRequest;
+use App\Http\Requests\Portal\RateTicketRequest;
 use App\Models\Ticket;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -48,5 +50,16 @@ class WidgetTicketController extends Controller
         }
 
         return response()->json(CustomerTicketView::of($ticket->refresh()), 201);
+    }
+
+    public function rate(RateTicketRequest $request, Ticket $ticket, RateTicket $rate): JsonResponse
+    {
+        try {
+            $rate->handle($ticket, $request->score(), $request->validated('comment'));
+        } catch (TicketActionFailed $e) {
+            throw ValidationException::withMessages(['score' => $e->getMessage()]);
+        }
+
+        return response()->json(CustomerTicketView::of($ticket->refresh()));
     }
 }

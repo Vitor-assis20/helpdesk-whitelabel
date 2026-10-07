@@ -1,3 +1,5 @@
+import { type Rating } from '@/lib/satisfaction';
+
 export interface Tenant {
     name: string;
     slug: string;
@@ -13,6 +15,9 @@ export interface PortalTicket {
     accepts_messages: boolean;
     /** Token do link do cliente: autoriza o canal em tempo real do portal. */
     token: string;
+    /** Avaliação liberada (chamado resolvido ou encerrado). */
+    can_rate: boolean;
+    rating: Rating | null;
 }
 
 export interface PortalMessage {

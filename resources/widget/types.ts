@@ -16,6 +16,8 @@ export interface CustomerTicket {
         status_label: string;
         accepts_messages: boolean;
         token: string;
+        can_rate: boolean;
+        rating: { score: number; label: string; comment: string | null } | null;
     };
     messages: { id: number; body: string; author: string; from_customer: boolean; created_at: string }[];
 }

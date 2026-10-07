@@ -28,6 +28,13 @@ final class CustomerTicketView
                 'status_label' => $ticket->status->label(),
                 'accepts_messages' => $ticket->status !== TicketStatus::Closed,
                 'token' => $ticket->access_token,
+                // Avaliação do atendimento: liberada depois de resolvido.
+                'can_rate' => in_array($ticket->status, [TicketStatus::Resolved, TicketStatus::Closed], true),
+                'rating' => $ticket->satisfaction_score ? [
+                    'score' => $ticket->satisfaction_score->value,
+                    'label' => $ticket->satisfaction_score->label(),
+                    'comment' => $ticket->satisfaction_comment,
+                ] : null,
             ],
             'messages' => $ticket->messages()->public()->with('user:id,name')->get()
                 ->map(fn (TicketMessage $message) => [

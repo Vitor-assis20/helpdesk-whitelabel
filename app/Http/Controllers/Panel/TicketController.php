@@ -103,6 +103,12 @@ class TicketController extends Controller
                     fn (TicketPriority $priority) => ['value' => $priority->value, 'label' => $priority->label()],
                     TicketPriority::cases(),
                 ),
+                'rating' => $ticket->satisfaction_score ? [
+                    'score' => $ticket->satisfaction_score->value,
+                    'label' => $ticket->satisfaction_score->label(),
+                    'comment' => $ticket->satisfaction_comment,
+                    'rated_at' => $ticket->satisfaction_rated_at->toIso8601String(),
+                ] : null,
                 'sla' => [
                     'first_response' => $this->deadline($ticket->first_response_due_at, $ticket->first_response_at, $ticket->first_response_breached_at),
                     'resolution' => $this->deadline($ticket->resolution_due_at, $ticket->resolved_at, $ticket->resolution_breached_at),

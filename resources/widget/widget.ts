@@ -16,6 +16,14 @@ import type { CustomerTicket, WidgetConfig } from './types';
 const CHAT_ICON =
     '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>';
 
+const SCORES = [
+    [1, '😞', 'Péssimo'],
+    [2, '🙁', 'Ruim'],
+    [3, '😐', 'Regular'],
+    [4, '🙂', 'Bom'],
+    [5, '😄', 'Ótimo'],
+] as const;
+
 type Attributes = Record<string, string | boolean | ((event: Event) => void)>;
 
 /** Cria um elemento; filhos string viram nós de texto (seguro contra XSS). */
@@ -180,8 +188,10 @@ class HelpdeskWidget {
     private renderReply(data: CustomerTicket): void {
         const restart = el('button', { class: 'link', type: 'button', onclick: () => this.restart() }, ['Abrir um novo chamado']);
 
+        const rating = this.renderRating(data);
+
         if (!data.ticket.accepts_messages) {
-            this.footer.replaceChildren(el('p', { class: 'status' }, ['Este chamado foi encerrado. ', restart]));
+            this.footer.replaceChildren(...rating, el('p', { class: 'status' }, ['Este chamado foi encerrado. ', restart]));
             return;
         }
 
@@ -190,6 +200,7 @@ class HelpdeskWidget {
         const error = el('p', { class: 'error', role: 'alert' });
 
         this.footer.replaceChildren(
+            ...rating,
             el(
                 'form',
                 {
@@ -210,6 +221,47 @@ class HelpdeskWidget {
             error,
             restart,
         );
+    }
+
+    /** Avaliação do atendimento, depois de resolvido: um clique na nota grava. */
+    private renderRating(data: CustomerTicket): Node[] {
+        if (!data.ticket.can_rate) return [];
+
+        if (data.ticket.rating) {
+            const emoji = SCORES.find(([value]) => value === data.ticket.rating?.score)?.[1] ?? '';
+            return [el('p', { class: 'status' }, [`Obrigado pela avaliação: ${emoji} ${data.ticket.rating.label}`])];
+        }
+
+        const error = el('p', { class: 'error', role: 'alert' });
+        const buttons = SCORES.map(([value, emoji, label]) =>
+            el(
+                'button',
+                {
+                    type: 'button',
+                    class: 'score',
+                    title: label,
+                    'aria-label': `${value} · ${label}`,
+                    onclick: async () => {
+                        buttons.forEach((button) => (button.disabled = true));
+                        try {
+                            this.show(await this.api.rate(data.ticket.token, value));
+                        } catch (failure) {
+                            error.textContent = failure instanceof Error ? failure.message : 'Algo deu errado.';
+                            buttons.forEach((button) => (button.disabled = false));
+                        }
+                    },
+                },
+                [emoji],
+            ),
+        );
+
+        return [
+            el('div', { class: 'rating' }, [
+                el('p', { class: 'status' }, ['Como foi o atendimento?']),
+                el('div', { class: 'scores' }, buttons),
+                error,
+            ]),
+        ];
     }
 
     private restart(): void {

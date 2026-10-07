@@ -9,6 +9,7 @@ import { StatusBadge } from '@/components/ticket-badges';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import AppLayout from '@/layouts/app-layout';
+import { scoreEmoji } from '@/lib/satisfaction';
 import { formatDateTime, timeAgo } from '@/lib/time';
 import { cn } from '@/lib/utils';
 import { type SharedData } from '@/types';
@@ -292,6 +293,26 @@ export default function TicketPage({ ticket, messages, events, team, macros }: T
                         <DeadlineRow label="Primeira resposta" deadline={ticket.sla.first_response} />
                         <DeadlineRow label="Resolução" deadline={ticket.sla.resolution} />
                     </div>
+
+                    {ticket.rating && (
+                        <div className="space-y-1 text-sm">
+                            <h2 className="font-semibold">Avaliação do cliente</h2>
+                            <p
+                                className={cn(
+                                    'font-medium',
+                                    ticket.rating.score >= 4
+                                        ? 'text-emerald-700 dark:text-emerald-400'
+                                        : ticket.rating.score <= 2 && 'text-red-600 dark:text-red-400',
+                                )}
+                            >
+                                {scoreEmoji(ticket.rating.score)} {ticket.rating.label} ({ticket.rating.score}/5)
+                            </p>
+                            {ticket.rating.comment && <p className="text-muted-foreground whitespace-pre-wrap">“{ticket.rating.comment}”</p>}
+                            <p className="text-muted-foreground text-xs" title={formatDateTime(ticket.rating.rated_at)}>
+                                {timeAgo(ticket.rating.rated_at)}
+                            </p>
+                        </div>
+                    )}
 
                     <div className="space-y-1 text-sm">
                         <h2 className="font-semibold">Cliente</h2>

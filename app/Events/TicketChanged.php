@@ -33,6 +33,8 @@ class TicketChanged implements ShouldBroadcast, ShouldDispatchAfterCommit
 
     public const SLA = 'sla';
 
+    public const RATING = 'rating';
+
     public function __construct(
         public readonly int $tenantId,
         public readonly int $ticketId,
