@@ -22,9 +22,9 @@ SaaS multi-tenant de atendimento ao cliente. Cada empresa recebe chamados pelo *
 | --- | --- |
 | ![Busca](docs/screenshots/search.png) | ![Configurações](docs/screenshots/settings.png) |
 
-| Equipe e convites |
-| --- |
-| ![Equipe](docs/screenshots/team.png) |
+| Respostas prontas com "/", já preenchidas | Equipe e convites |
+| --- | --- |
+| ![Respostas prontas](docs/screenshots/macros.png) | ![Equipe](docs/screenshots/team.png) |
 
 </details>
 
@@ -36,6 +36,7 @@ SaaS multi-tenant de atendimento ao cliente. Cada empresa recebe chamados pelo *
 - **Tempo real:** novos chamados e mensagens aparecem sem recarregar; quem mais está vendo o chamado e quem está digitando
 - **SLA:** prazos de primeira resposta e resolução por prioridade, contados só em horário comercial, com alerta por e-mail quando estouram
 - **Busca full-text** em assunto, mensagens, cliente e número — sem acento e enquanto digita
+- **Respostas prontas:** digite `/` no campo de resposta para buscar; variáveis como `{{cliente.primeiro_nome}}` e `{{chamado.numero}}` chegam preenchidas, e as mais usadas aparecem primeiro
 - Configuração da marca, do expediente e dos prazos
 - **Equipe:** convites por e-mail com link de uso único, papéis de dono, administrador e atendente, troca de papel e remoção
 - Cadastro de empresa pelo próprio usuário, que vira dono e escolhe o subdomínio do portal
@@ -83,19 +84,23 @@ Aceitar exige o token **e** estar logado com o e-mail convidado. O token sozinho
 
 Os papéis seguem uma hierarquia ([`TenantRole::canManage`](app/Enums/TenantRole.php)): o dono gerencia administradores e atendentes, o administrador só atendentes, ninguém mexe no próprio acesso nem no do dono. Remover alguém da equipe deixa os chamados dessa pessoa sem responsável sem precisar de código: a FK composta para `tenant_user` já faz isso no banco.
 
+### Respostas prontas preenchidas no servidor
+As variáveis são preenchidas pelo servidor ([`MacroRenderer`](app/Helpdesk/MacroRenderer.php)) ao abrir o chamado, e o texto chega pronto ao campo, onde o atendente ainda pode editar antes de enviar. Variável desconhecida fica visível como está, em vez de sumir sem aviso, e o primeiro nome ignora tratamentos ("Dra. Marina" → "Marina"). O título é único por empresa sem diferenciar maiúsculas, garantido por um índice em `lower(title)`; a contagem de uso só vale para respostas da própria empresa.
+
 ### Busca full-text no Postgres
 Configuração própria `pt_unaccent` (unaccent + radicais em português), vetores em **colunas geradas** com índices GIN e prefixo enquanto digita ("reemb" encontra "Reembolso"). Só letras e dígitos chegam ao `tsquery`, e o trecho destacado volta como segmentos de texto — nada de HTML vindo do cliente ([`TicketSearch`](app/Helpdesk/TicketSearch.php)).
 
 ## Qualidade
 
-- **127 testes** (unitários, feature e integração) rodando em **PostgreSQL real**, incluindo regras do banco, isolamento entre empresas, autorização de canais, serialização para a fila e entradas hostis na busca
+- **136 testes** (unitários, feature e integração) rodando em **PostgreSQL real**, incluindo regras do banco, isolamento entre empresas, autorização de canais, serialização para a fila e entradas hostis na busca
 - Fluxos validados ponta a ponta em navegador (Playwright): dois atendentes ao vivo, cliente no portal, widget em outra origem
 - CI no GitHub Actions: testes com Postgres, Pint, Prettier, ESLint e `tsc`
 
 ```
 app/
 ├── Helpdesk/            Ações de domínio (abrir, responder, status, responsável, prioridade),
-│   ├── Sla/             busca, e-mails ao cliente; calendário e relógio de SLA
+│   │                    busca, respostas prontas, e-mails ao cliente
+│   ├── Sla/             calendário e relógio de SLA
 │   └── Team/            convites, papéis e cadastro de empresa
 ├── Events/              TicketChanged (tempo real)
 ├── Http/Controllers/    Panel/ (painel da equipe), Portal/ (cliente), Widget/ (API do widget)

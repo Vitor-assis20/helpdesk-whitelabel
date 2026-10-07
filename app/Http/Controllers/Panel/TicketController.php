@@ -4,9 +4,11 @@ namespace App\Http\Controllers\Panel;
 
 use App\Enums\TicketPriority;
 use App\Enums\TicketStatus;
+use App\Helpdesk\MacroRenderer;
 use App\Helpdesk\TicketEventDescriber;
 use App\Helpdesk\TicketSearch;
 use App\Http\Controllers\Controller;
+use App\Models\Macro;
 use App\Models\Ticket;
 use App\Models\TicketEvent;
 use App\Models\TicketMessage;
@@ -73,7 +75,7 @@ class TicketController extends Controller
         ]);
     }
 
-    public function show(Ticket $ticket, TicketEventDescriber $describer): Response
+    public function show(Request $request, Ticket $ticket, TicketEventDescriber $describer, MacroRenderer $macros): Response
     {
         $ticket->load('customer', 'messages.user:id,name', 'messages.customer:id,name', 'events');
         $team = $this->current->get()->users()->orderBy('name')->get(['users.id', 'users.name']);
@@ -124,6 +126,12 @@ class TicketController extends Controller
                 'created_at' => $event->created_at->toIso8601String(),
             ]),
             'team' => $team->map->only('id', 'name')->values(),
+            // Já preenchidas para este chamado e este atendente; as mais usadas primeiro.
+            'macros' => Macro::query()->orderByDesc('uses')->orderBy('title')->get()->map(fn (Macro $macro) => [
+                'id' => $macro->id,
+                'title' => $macro->title,
+                'body' => $macros->render($macro->body, $ticket, $request->user()),
+            ]),
         ]);
     }
 

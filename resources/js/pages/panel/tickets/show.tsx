@@ -4,6 +4,7 @@ import { Eye, LoaderCircle, Lock } from 'lucide-react';
 import { type FormEventHandler, useEffect, useRef, useState } from 'react';
 
 import InputError from '@/components/input-error';
+import { useMacroComposer } from '@/components/macro-composer';
 import { StatusBadge } from '@/components/ticket-badges';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -11,13 +12,14 @@ import AppLayout from '@/layouts/app-layout';
 import { formatDateTime, timeAgo } from '@/lib/time';
 import { cn } from '@/lib/utils';
 import { type SharedData } from '@/types';
-import { type Deadline, type TicketDetail, type TicketHistoryEntry, type TicketMessage } from '@/types/panel';
+import { type Deadline, type Macro, type TicketDetail, type TicketHistoryEntry, type TicketMessage } from '@/types/panel';
 
 interface TicketPageProps {
     ticket: TicketDetail;
     messages: TicketMessage[];
     events: TicketHistoryEntry[];
     team: { id: number; name: string }[];
+    macros: Macro[];
 }
 
 type Viewer = { id: number; name: string };
@@ -111,14 +113,15 @@ function Message({ message }: { message: TicketMessage }) {
     );
 }
 
-export default function TicketPage({ ticket, messages, events, team }: TicketPageProps) {
+export default function TicketPage({ ticket, messages, events, team, macros }: TicketPageProps) {
     const { auth } = usePage<SharedData>().props;
     const me = { id: auth.user.id, name: auth.user.name };
     const errors = usePage<{ errors: Record<string, string> }>().props.errors;
     const { others, typing, notifyTyping } = useTicketPresence(ticket.id, me);
     const conversationEnd = useRef<HTMLDivElement>(null);
 
-    const form = useForm<{ body: string; internal: boolean }>({ body: '', internal: false });
+    const form = useForm<{ body: string; internal: boolean; macro_id: number | null }>({ body: '', internal: false, macro_id: null });
+    const composer = useMacroComposer(macros, form.data.body, (body, macro) => form.setData({ ...form.data, body, macro_id: macro.id }));
 
     // Tempo real: alguém respondeu, mudou status ou responsável → recarrega o chamado.
     useEcho(`tickets.${ticket.id}`, '.ticket.changed', () => {
@@ -131,7 +134,7 @@ export default function TicketPage({ ticket, messages, events, team }: TicketPag
         e.preventDefault();
         form.post(route('panel.tickets.reply', { ticket: ticket.number }), {
             preserveScroll: true,
-            onSuccess: () => form.reset('body'),
+            onSuccess: () => form.reset('body', 'macro_id'),
         });
     };
 
@@ -191,23 +194,32 @@ export default function TicketPage({ ticket, messages, events, team }: TicketPag
                             <textarea
                                 aria-label="Mensagem"
                                 className="placeholder:text-muted-foreground min-h-28 w-full resize-y bg-transparent text-sm outline-none"
-                                placeholder={form.data.internal ? 'Nota visível só para a equipe…' : `Responder para ${ticket.customer.name}…`}
+                                placeholder={
+                                    form.data.internal
+                                        ? 'Nota visível só para a equipe…'
+                                        : `Responder para ${ticket.customer.name}…${macros.length > 0 ? ' (/ para respostas prontas)' : ''}`
+                                }
                                 value={form.data.body}
                                 onChange={(e) => {
                                     form.setData('body', e.target.value);
                                     notifyTyping();
                                 }}
+                                onKeyDown={composer.onKeyDown}
                             />
+                            {composer.suggestions}
                             <InputError message={form.errors.body} />
                             <div className="flex items-center justify-between gap-3">
-                                <label className="flex items-center gap-2 text-sm">
-                                    <input
-                                        type="checkbox"
-                                        checked={form.data.internal}
-                                        onChange={(e) => form.setData('internal', e.target.checked)}
-                                    />
-                                    Nota interna
-                                </label>
+                                <div className="flex items-center gap-3">
+                                    <label className="flex items-center gap-2 text-sm">
+                                        <input
+                                            type="checkbox"
+                                            checked={form.data.internal}
+                                            onChange={(e) => form.setData('internal', e.target.checked)}
+                                        />
+                                        Nota interna
+                                    </label>
+                                    {composer.menu}
+                                </div>
                                 <Button type="submit" disabled={form.processing || !form.data.body.trim()}>
                                     {form.processing && <LoaderCircle className="size-4 animate-spin" />}
                                     {form.data.internal ? 'Salvar nota' : 'Responder'}

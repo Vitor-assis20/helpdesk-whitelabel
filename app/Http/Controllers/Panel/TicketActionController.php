@@ -11,6 +11,7 @@ use App\Helpdesk\CustomerNotifier;
 use App\Helpdesk\ReplyToTicket;
 use App\Helpdesk\TicketActionFailed;
 use App\Http\Controllers\Controller;
+use App\Models\Macro;
 use App\Models\Ticket;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
@@ -29,9 +30,17 @@ class TicketActionController extends Controller
         $validated = $request->validate([
             'body' => ['required', 'string', 'max:10000'],
             'internal' => ['boolean'],
+            // Resposta pronta usada no texto (conta para ordenar as mais usadas).
+            'macro_id' => ['nullable', 'integer'],
         ], ['body.required' => 'Escreva a mensagem.']);
 
         $message = $this->attempt('body', fn () => $reply->asAgent($ticket, $request->user(), $validated['body'], $request->boolean('internal')));
+
+        if ($validated['macro_id'] ?? null) {
+            // Escopo da empresa: o id de uma resposta de outra empresa não conta nada.
+            Macro::query()->whereKey($validated['macro_id'])->increment('uses');
+        }
+
         // Depois do commit; nota interna não gera e-mail (o notifier ignora).
         $notifier->agentReplied($ticket, $message);
 

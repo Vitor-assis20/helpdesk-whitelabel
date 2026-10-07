@@ -54,6 +54,13 @@ export interface Paginated<T> {
     total: number;
 }
 
+/** Resposta pronta, já com as variáveis preenchidas para o chamado aberto. */
+export interface Macro {
+    id: number;
+    title: string;
+    body: string;
+}
+
 export interface TicketDetail {
     id: number;
     number: number;

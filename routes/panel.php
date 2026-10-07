@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Panel\MacroController;
 use App\Http\Controllers\Panel\SettingsController;
 use App\Http\Controllers\Panel\SwitchTenantController;
 use App\Http\Controllers\Panel\TeamController;
@@ -29,6 +30,13 @@ Route::middleware(['auth', 'verified', 'panel'])
             Route::put('marca', [SettingsController::class, 'branding'])->name('branding');
             Route::put('expediente', [SettingsController::class, 'hours'])->name('hours');
             Route::put('sla', [SettingsController::class, 'sla'])->name('sla');
+        });
+
+        Route::middleware('can:manage-tenant')->prefix('respostas')->name('macros.')->group(function () {
+            Route::get('/', [MacroController::class, 'index'])->name('index');
+            Route::post('/', [MacroController::class, 'store'])->name('store');
+            Route::put('{macro}', [MacroController::class, 'update'])->name('update');
+            Route::delete('{macro}', [MacroController::class, 'destroy'])->name('destroy');
         });
 
         Route::middleware('can:manage-tenant')->prefix('equipe')->name('team.')->group(function () {

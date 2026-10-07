@@ -11,6 +11,7 @@ use App\Helpdesk\ChangeTicketStatus;
 use App\Helpdesk\OpenTicket;
 use App\Helpdesk\ReplyToTicket;
 use App\Models\Customer;
+use App\Models\Macro;
 use App\Models\Tenant;
 use App\Models\User;
 use Carbon\CarbonImmutable;
@@ -42,6 +43,16 @@ class DatabaseSeeder extends Seeder
     ];
 
     /**
+     * Respostas prontas da loja: [título, texto].
+     */
+    private const STORE_MACROS = [
+        ['Saudação', 'Olá, {{cliente.primeiro_nome}}! Aqui é {{atendente.primeiro_nome}}, da {{empresa.nome}}. Já estou vendo o seu chamado #{{chamado.numero}}.'],
+        ['Prazo de entrega', 'Olá, {{cliente.primeiro_nome}}! O prazo de entrega é de 3 a 7 dias úteis após a postagem. O código de rastreio chega por e-mail assim que o pedido sai do nosso centro.'],
+        ['Pedido de troca', 'Para a troca, envie o produto sem uso, com a etiqueta, em até 30 dias. Gero a etiqueta de devolução e mando por aqui em seguida.'],
+        ['Encerramento', "Fico à disposição, {{cliente.primeiro_nome}}! Se precisar de mais alguma coisa, é só responder esta mensagem.\n\n{{atendente.nome}} · {{empresa.nome}}"],
+    ];
+
+    /**
      * Seed the application's database.
      */
     public function run(): void
@@ -61,6 +72,7 @@ class DatabaseSeeder extends Seeder
             ->create(['name' => 'Clínica Bem Estar', 'slug' => 'clinica-bem-estar', 'branding' => ['primary_color' => '#0f766e', 'logo_path' => null]]);
 
         $this->seedTickets($store, self::STORE_TICKETS, agents: [$ana, $carlos], manager: $owner);
+        $store->run(fn () => collect(self::STORE_MACROS)->each(fn (array $macro) => Macro::create(['title' => $macro[0], 'body' => $macro[1]])));
         $this->seedTickets($clinic, self::CLINIC_TICKETS, agents: [$owner], manager: $owner);
 
         // Marca os prazos que já estouraram nos dias simulados, como o agendador faria.
