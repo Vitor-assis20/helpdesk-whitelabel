@@ -34,6 +34,17 @@ const AT_RISK_MS = 60 * 60_000;
 export function SlaBadge({ sla, now = Date.now() }: { sla: CurrentDeadline | null; now?: number }) {
     if (!sla?.due_at) return null;
 
+    if (sla.paused) {
+        return (
+            <span
+                className="text-muted-foreground rounded-full border border-dashed px-2 py-0.5 text-xs font-medium whitespace-nowrap"
+                title="Aguardando o cliente: o prazo de resolução está pausado"
+            >
+                SLA pausado
+            </span>
+        );
+    }
+
     const remaining = new Date(sla.due_at).getTime() - now;
     const breached = sla.breached || remaining <= 0;
     const verb = sla.target === 'first_response' ? 'Responder' : 'Resolver';

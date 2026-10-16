@@ -23,7 +23,8 @@ class CheckSlaBreaches extends Command
      */
     private const TARGETS = [
         'first_response' => ['due' => 'first_response_due_at', 'breached' => 'first_response_breached_at', 'pending' => 'first_response_at IS NULL'],
-        'resolution' => ['due' => 'resolution_due_at', 'breached' => 'resolution_breached_at', 'pending' => 'resolved_at IS NULL'],
+        // Pausado (aguardando o cliente) não estoura.
+        'resolution' => ['due' => 'resolution_due_at', 'breached' => 'resolution_breached_at', 'pending' => 'resolved_at IS NULL AND sla_paused_at IS NULL'],
     ];
 
     public function handle(): int

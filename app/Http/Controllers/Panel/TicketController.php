@@ -103,7 +103,10 @@ class TicketController extends Controller
                 ),
                 'sla' => [
                     'first_response' => $this->deadline($ticket->first_response_due_at, $ticket->first_response_at, $ticket->first_response_breached_at),
-                    'resolution' => $this->deadline($ticket->resolution_due_at, $ticket->resolved_at, $ticket->resolution_breached_at),
+                    'resolution' => [
+                        ...$this->deadline($ticket->resolution_due_at, $ticket->resolved_at, $ticket->resolution_breached_at, paused: $ticket->sla_paused_at !== null),
+                        'paused' => $ticket->sla_paused_at !== null,
+                    ],
                 ],
             ],
             'messages' => $ticket->messages->map(fn (TicketMessage $message) => [
@@ -130,7 +133,7 @@ class TicketController extends Controller
     /**
      * O prazo que está correndo agora (null se o chamado não está ativo).
      *
-     * @return array{target: string, due_at: string|null, breached: bool}|null
+     * @return array{target: string, due_at: string|null, breached: bool, paused: bool}|null
      */
     private function currentDeadline(Ticket $ticket): ?array
     {
@@ -142,23 +145,26 @@ class TicketController extends Controller
             ? ['first_response', $ticket->first_response_due_at, $ticket->first_response_breached_at]
             : ['resolution', $ticket->resolution_due_at, $ticket->resolution_breached_at];
 
+        $paused = $target === 'resolution' && $ticket->sla_paused_at !== null;
+
         return [
             'target' => $target,
             'due_at' => $due?->toIso8601String(),
-            'breached' => $breachedAt !== null || ($due !== null && $due <= now()),
+            'breached' => $breachedAt !== null || (! $paused && $due !== null && $due <= now()),
+            'paused' => $paused,
         ];
     }
 
     /**
      * @return array{due_at: string|null, done_at: string|null, breached: bool}
      */
-    private function deadline(?CarbonImmutable $due, ?CarbonImmutable $doneAt, ?CarbonImmutable $breachedAt): array
+    private function deadline(?CarbonImmutable $due, ?CarbonImmutable $doneAt, ?CarbonImmutable $breachedAt, bool $paused = false): array
     {
         return [
             'due_at' => $due?->toIso8601String(),
             'done_at' => $doneAt?->toIso8601String(),
-            // Cumprido depois do prazo também conta como estouro.
-            'breached' => $breachedAt !== null || ($due !== null && ($doneAt ?? now()) > $due),
+            // Cumprido depois do prazo também conta como estouro; pausado não estoura.
+            'breached' => $breachedAt !== null || (! $paused && $due !== null && ($doneAt ?? now()) > $due),
         ];
     }
 

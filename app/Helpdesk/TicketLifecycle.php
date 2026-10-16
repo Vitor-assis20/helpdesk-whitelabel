@@ -3,6 +3,7 @@
 namespace App\Helpdesk;
 
 use App\Enums\TicketStatus;
+use App\Helpdesk\Sla\SlaClock;
 use App\Models\Ticket;
 use App\Models\TicketEvent;
 use App\Models\User;
@@ -13,6 +14,8 @@ use App\Models\User;
  */
 class TicketLifecycle
 {
+    public function __construct(private readonly SlaClock $sla) {}
+
     /**
      * @param  string  $reason  Por que mudou: manual, agent_reply, customer_reply, assigned…
      */
@@ -33,6 +36,13 @@ class TicketLifecycle
 
         if ($status === TicketStatus::Closed) {
             $ticket->closed_at = now();
+        }
+
+        // Aguardando o cliente, o prazo de resolução não corre.
+        if ($status === TicketStatus::Pending) {
+            $this->sla->pause($ticket);
+        } elseif ($from === TicketStatus::Pending) {
+            $this->sla->resume($ticket);
         }
 
         $ticket->save();

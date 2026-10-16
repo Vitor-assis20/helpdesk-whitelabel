@@ -64,16 +64,19 @@ function useTicketPresence(ticketId: number, me: Viewer) {
 }
 
 /** Um prazo do chamado: cumprido (no prazo ou não) ou ainda correndo. */
-function DeadlineRow({ label, deadline }: { label: string; deadline: Deadline }) {
+function DeadlineRow({ label, deadline }: { label: string; deadline: Deadline & { paused?: boolean } }) {
     if (!deadline.due_at) return null;
 
-    const state = deadline.done_at
-        ? deadline.breached
-            ? { text: `cumprido com atraso em ${formatDateTime(deadline.done_at)}`, className: 'text-red-600 dark:text-red-400' }
-            : { text: `cumprido em ${formatDateTime(deadline.done_at)}`, className: 'text-emerald-700 dark:text-emerald-400' }
-        : deadline.breached
-          ? { text: `estourado (prazo ${formatDateTime(deadline.due_at)})`, className: 'text-red-600 dark:text-red-400 font-medium' }
-          : { text: `até ${formatDateTime(deadline.due_at)}`, className: 'text-muted-foreground' };
+    const state =
+        deadline.paused && !deadline.breached
+            ? { text: 'pausado enquanto aguarda o cliente', className: 'text-muted-foreground italic' }
+            : deadline.done_at
+              ? deadline.breached
+                  ? { text: `cumprido com atraso em ${formatDateTime(deadline.done_at)}`, className: 'text-red-600 dark:text-red-400' }
+                  : { text: `cumprido em ${formatDateTime(deadline.done_at)}`, className: 'text-emerald-700 dark:text-emerald-400' }
+              : deadline.breached
+                ? { text: `estourado (prazo ${formatDateTime(deadline.due_at)})`, className: 'text-red-600 dark:text-red-400 font-medium' }
+                : { text: `até ${formatDateTime(deadline.due_at)}`, className: 'text-muted-foreground' };
 
     return (
         <p>

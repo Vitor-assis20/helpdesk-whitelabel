@@ -113,11 +113,83 @@ class SlaTest extends HelpdeskTestCase
 
         // Bem depois dos dois prazos (primeira resposta 10h30, resolução 14h).
         $this->travelTo($this->local('2026-10-06 18:00'));
-        $this->artisan('tickets:check-sla')->expectsOutput('1 prazo(s) estourado(s).');
+        $this->artisan('tickets:check-sla')->expectsOutput('0 prazo(s) estourado(s).');
 
         $this->assertNull($answered->fresh()->first_response_breached_at, 'Respondido a tempo.');
-        $this->assertNotNull($answered->fresh()->resolution_breached_at, 'Mas não foi resolvido.');
+        $this->assertNull($answered->fresh()->resolution_breached_at, 'Aguardando o cliente: o prazo de resolução está pausado.');
         $this->assertNull($resolved->fresh()->resolution_breached_at);
+    }
+
+    public function test_waiting_for_the_customer_pauses_the_resolution_deadline()
+    {
+        $this->travelTo($this->local('2026-10-05 09:00'));
+        $ticket = $this->openWithPriority(TicketPriority::Urgent); // resolver até 13h
+
+        // Equipe responde às 10h: faltam 3h úteis, e o relógio para.
+        $this->travelTo($this->local('2026-10-05 10:00'));
+        app(ReplyToTicket::class)->asAgent($ticket, $this->agent, 'Pode confirmar o pedido?');
+        $this->assertNotNull($ticket->fresh()->sla_paused_at);
+
+        // O cliente some até o dia seguinte: nada estoura enquanto isso.
+        $this->travelTo($this->local('2026-10-05 17:00'));
+        $this->artisan('tickets:check-sla')->expectsOutput('0 prazo(s) estourado(s).');
+
+        // Cliente responde terça às 10h: as 3h que faltavam voltam a contar.
+        $this->travelTo($this->local('2026-10-06 10:00'));
+        app(ReplyToTicket::class)->asCustomer($ticket, $this->customer, 'Confirmo: pedido 48213.');
+
+        $ticket->refresh();
+        $this->assertNull($ticket->sla_paused_at);
+        $this->assertSame('2026-10-06 13:00', $this->localTime($ticket->resolution_due_at));
+        $this->assertSame(540, $ticket->sla_paused_minutes, 'Segunda 10h–18h + terça 9h–10h = 9h úteis pausadas.');
+
+        $this->travelTo($this->local('2026-10-06 13:01'));
+        $this->artisan('tickets:check-sla')->expectsOutput('1 prazo(s) estourado(s).');
+    }
+
+    public function test_pausing_after_the_deadline_does_not_undo_the_breach()
+    {
+        $this->travelTo($this->local('2026-10-05 09:00'));
+        $ticket = $this->openWithPriority(TicketPriority::Urgent); // resolver até 13h
+
+        $this->travelTo($this->local('2026-10-05 15:00'));
+        app(ReplyToTicket::class)->asAgent($ticket, $this->agent, 'Desculpe a demora.');
+        $this->travelTo($this->local('2026-10-06 10:00'));
+        app(ReplyToTicket::class)->asCustomer($ticket, $this->customer, 'Ok.');
+
+        $this->assertSame('2026-10-05 13:00', $this->localTime($ticket->fresh()->resolution_due_at), 'Prazo já vencido não é estendido.');
+        $this->assertSame(0, $ticket->fresh()->sla_paused_minutes);
+    }
+
+    public function test_paused_time_survives_a_priority_change()
+    {
+        $this->travelTo($this->local('2026-10-05 09:00'));
+        $ticket = $this->openWithPriority(TicketPriority::Urgent);
+        $this->travelTo($this->local('2026-10-05 10:00'));
+        app(ReplyToTicket::class)->asAgent($ticket, $this->agent, 'Pode confirmar?');
+        $this->travelTo($this->local('2026-10-06 10:00'));
+        app(ReplyToTicket::class)->asCustomer($ticket, $this->customer, 'Confirmo.');
+
+        // Alta: 8h úteis desde a abertura + as 9h pausadas = terça 17h.
+        app(ChangeTicketPriority::class)->handle($ticket, TicketPriority::High, $this->agent);
+
+        $this->assertSame('2026-10-06 17:00', $this->localTime($ticket->fresh()->resolution_due_at));
+    }
+
+    public function test_the_inbox_shows_a_paused_deadline()
+    {
+        $this->travelTo($this->local('2026-10-05 09:00'));
+        $ticket = $this->openWithPriority(TicketPriority::Urgent);
+        app(ReplyToTicket::class)->asAgent($ticket, $this->agent, 'Pode confirmar?');
+        $this->travelTo($this->local('2026-10-06 10:00'));
+
+        $this->withoutVite()->actingAs($this->agent)
+            ->get('/painel/chamados')
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('tickets.data.0.sla.target', 'resolution')
+                ->where('tickets.data.0.sla.paused', true)
+                ->where('tickets.data.0.sla.breached', false)
+            );
     }
 
     public function test_the_inbox_shows_the_running_deadline_and_sorts_by_it()

@@ -30,7 +30,7 @@ SaaS multi-tenant de atendimento ao cliente. Cada empresa recebe chamados pelo *
 - Caixa de entrada com abas (em aberto, meus, sem responsável, resolvidos) e ordenação por atividade ou por prazo
 - Conversa com respostas públicas e **notas internas**; status, responsável, prioridade e histórico auditável
 - **Tempo real:** novos chamados e mensagens aparecem sem recarregar; quem mais está vendo o chamado e quem está digitando
-- **SLA:** prazos de primeira resposta e resolução por prioridade, contados só em horário comercial, com alerta por e-mail quando estouram
+- **SLA:** prazos de primeira resposta e resolução por prioridade, contados só em horário comercial, com alerta por e-mail quando estouram; o prazo de resolução pausa enquanto o chamado aguarda o cliente
 - **Busca full-text** em assunto, mensagens, cliente e número — sem acento e enquanto digita
 - Configuração da marca, do expediente e dos prazos; papéis de dono, administrador e atendente
 
@@ -62,6 +62,8 @@ O widget roda no site da empresa, em **outra origem**. A primeira ideia era abri
 ### SLA em horário comercial
 [`BusinessCalendar`](app/Helpdesk/Sla/BusinessCalendar.php) soma e conta minutos úteis no fuso da empresa — noites, fins de semana e pausas não contam: um chamado normal (4 h úteis) aberto sexta às 17h30 vence segunda às 12h30.
 
+Enquanto o chamado aguarda o cliente, o prazo de resolução **pausa**: quando o cliente responde, volta o tempo útil que faltava. As pausas ficam somadas num contador, então recalcular o prazo (ao mudar a prioridade) não as perde, e pausar depois do estouro não o apaga.
+
 Um job a cada minuto marca os estouros com `UPDATE ... RETURNING`: marcar e devolver numa operação atômica faz com que duas execuções simultâneas **nunca avisem o mesmo estouro duas vezes** ([`CheckSlaBreaches`](app/Console/Commands/CheckSlaBreaches.php)).
 
 ### Multi-tenancy com garantias no banco
@@ -75,7 +77,7 @@ Configuração própria `pt_unaccent` (unaccent + radicais em português), vetor
 
 ## Qualidade
 
-- **113 testes** (unitários, feature e integração) rodando em **PostgreSQL real**, incluindo regras do banco, isolamento entre empresas, autorização de canais, serialização para a fila e entradas hostis na busca
+- **117 testes** (unitários, feature e integração) rodando em **PostgreSQL real**, incluindo regras do banco, isolamento entre empresas, autorização de canais, serialização para a fila e entradas hostis na busca
 - Fluxos validados ponta a ponta em navegador (Playwright): dois atendentes ao vivo, cliente no portal, widget em outra origem
 - CI no GitHub Actions: testes com Postgres, Pint, Prettier, ESLint e `tsc`
 
@@ -135,7 +137,6 @@ docker compose exec app php artisan test
 
 ## Limitações e próximos passos
 
-- O prazo de resolução continua correndo enquanto o chamado aguarda o cliente (ferramentas maduras pausam)
 - Feriados não entram no calendário de SLA
 - Mudanças de SLA e expediente valem só para chamados novos
 - Anexos, upload de logo e entrada de chamados por e-mail

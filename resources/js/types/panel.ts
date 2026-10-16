@@ -21,6 +21,8 @@ export interface CurrentDeadline {
     target: 'first_response' | 'resolution';
     due_at: string | null;
     breached: boolean;
+    /** Aguardando o cliente: o prazo de resolução não corre. */
+    paused: boolean;
 }
 
 export interface Deadline {
@@ -69,7 +71,7 @@ export interface TicketDetail {
     transitions: { value: TicketStatus; label: string }[];
     accepts_messages: boolean;
     priorities: { value: TicketPriority; label: string }[];
-    sla: { first_response: Deadline; resolution: Deadline };
+    sla: { first_response: Deadline; resolution: Deadline & { paused: boolean } };
 }
 
 export interface TicketMessage {

@@ -49,6 +49,35 @@ class SlaClock
     }
 
     /**
+     * Para o prazo de resolução: o chamado passou a aguardar o cliente.
+     */
+    public function pause(Ticket $ticket): void
+    {
+        $ticket->sla_paused_at ??= now();
+    }
+
+    /**
+     * Retoma o prazo de resolução com o tempo útil que faltava quando pausou.
+     * Se o prazo já tinha vencido antes da pausa, nada é estendido.
+     */
+    public function resume(Ticket $ticket): void
+    {
+        if ($ticket->sla_paused_at === null) {
+            return;
+        }
+
+        if ($ticket->resolution_due_at !== null && $ticket->sla_paused_at < $ticket->resolution_due_at) {
+            $calendar = $this->calendarFor($ticket->tenant);
+            $paused = $calendar->minutesBetween($ticket->sla_paused_at, now());
+
+            $ticket->sla_paused_minutes += $paused;
+            $ticket->resolution_due_at = $calendar->addMinutes($ticket->resolution_due_at, $paused);
+        }
+
+        $ticket->sla_paused_at = null;
+    }
+
+    /**
      * Calcula (ou recalcula, após mudar a prioridade) os prazos a partir da
      * abertura. Um estouro já registrado é desfeito se o novo prazo ainda não venceu.
      */
@@ -60,7 +89,8 @@ class SlaClock
         $openedAt = CarbonImmutable::instance($ticket->created_at ?? now());
 
         $ticket->first_response_due_at = $calendar->addMinutes($openedAt, $policy['first_response_minutes']);
-        $ticket->resolution_due_at = $calendar->addMinutes($openedAt, $policy['resolution_minutes']);
+        // Pausas já encerradas (aguardando cliente) não contam contra a equipe.
+        $ticket->resolution_due_at = $calendar->addMinutes($openedAt, $policy['resolution_minutes'] + $ticket->sla_paused_minutes);
 
         if ($ticket->first_response_due_at > now()) {
             $ticket->first_response_breached_at = null;

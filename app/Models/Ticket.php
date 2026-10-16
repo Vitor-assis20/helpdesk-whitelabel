@@ -69,6 +69,8 @@ class Ticket extends Model
             'resolution_due_at' => UtcDateTime::class,
             'first_response_breached_at' => UtcDateTime::class,
             'resolution_breached_at' => UtcDateTime::class,
+            'sla_paused_at' => UtcDateTime::class,
+            'sla_paused_minutes' => 'integer',
         ];
     }
 
